@@ -276,7 +276,7 @@ describe('Tool Consolidation Integration', () => {
       expect(await storedEmbeddingModel(id)).toBe('test-mock');
     });
 
-    it('kg_node_update keeps the old vector and model when re-embedding fails, and still succeeds', async () => {
+    it('kg_node_update rejects a content change when re-embedding fails and leaves the node untouched', async () => {
       const ctx = createContext(sessionId);
       const created = await nodeCreateTool.execute(client, createFixtureProvider(), ctx, {
         type: 'observation',
@@ -291,12 +291,26 @@ describe('Tool Consolidation Integration', () => {
         id,
         content: 'New content the provider could not embed',
       });
-      expect(updated.isError).toBeFalsy();
+      expect(updated.isError).toBe(true);
+      expect(updated.errorCode).toBe('INTERNAL');
 
       const stored = await storedEmbedding(id);
-      expect(stored.content).toBe('New content the provider could not embed');
+      expect(stored.content).toBe('Content embedded before the outage');
       expect(stored.embedding).toEqual(before.embedding);
       expect(stored.embedding_model).toBe('fixture');
+    });
+
+    it('kg_node_update with only a status change still works while the embedding provider is down', async () => {
+      const ctx = createContext(sessionId);
+      const created = await nodeCreateTool.execute(client, createFixtureProvider(), ctx, {
+        type: 'problem',
+        content: 'Status change needs no embedding',
+        status: 'open',
+      });
+      const { id } = JSON.parse(created.content[0].text);
+
+      const updated = await nodeUpdateTool.execute(client, failingProvider(), ctx, { id, status: 'resolved' });
+      expect(updated.isError).toBeFalsy();
     });
 
     it('schemas reject create missing type and update missing id', () => {

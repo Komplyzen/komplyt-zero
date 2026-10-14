@@ -107,10 +107,11 @@ export async function validateToken(token: string): Promise<KgTokenPayload> {
     }
     const tenantId = payload.tenantId as string;
 
-    // Grant implicit kg:read kg:write for valid Komplyt users
-    // Better Auth doesn't support scope injection at consent time, so ChatGPT tokens
-    // arrive without kg:* scopes. We trust the JWT signature + tenantId claim.
-    // TODO: Remove when Better Auth supports consent-time scope injection
+    // Contract: scopes are NOT enforced. Every token that passes the issuer, audience and
+    // tenantId checks gets kg:read and kg:write, because some OAuth clients (e.g. ChatGPT via
+    // Better Auth) cannot request custom scopes at consent time. Authorization rests on the
+    // verified tenant, not on `scope`; docs/self-hosting.md says the same.
+    // TODO: enforce scopes once every supported client can request them.
     let scope = (payload.scope as string) || '';
     if (!scope.includes('kg:read') || !scope.includes('kg:write')) {
       logger.info({ sub, originalScope: scope }, 'Granting implicit kg:* scopes for authenticated user');

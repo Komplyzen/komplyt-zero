@@ -58,3 +58,6 @@ surreal/
 *.surql
 !database/**/*.surql
 bench-results/
+
+# Local 1Password reference file (copy of bench/op.env.example)
+bench/op.env

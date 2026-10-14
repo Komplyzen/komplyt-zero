@@ -48,7 +48,7 @@ services:
     restart: "no"
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.40.4
     volumes:
       - ollama-data:/root/.ollama
     healthcheck:
@@ -60,7 +60,7 @@ services:
 
   # One-shot: downloads the embedding model (a no-op once it is in the volume).
   ollama-pull:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.40.4
     depends_on:
       ollama:
         condition: service_healthy

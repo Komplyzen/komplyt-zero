@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Load benchmark credentials. Sourced by bench.sh.
 #   BENCH_ENV=dotenv (default)  source ${BENCH_ENV_FILE:-<repo>/.env}; a missing file is fine
-#   BENCH_ENV=op                resolve bench/op.env (NAME=op://...) with `op read`
+#   BENCH_ENV=op                resolve bench/op.env (copy of bench/op.env.example, git-ignored; NAME=op://...) with `op read`
 # Variables already set in the environment are never overwritten.
 
 load_bench_env() {

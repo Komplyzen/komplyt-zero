@@ -5,6 +5,9 @@ on:
     branches: ['**']
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   typecheck:
     runs-on: ubuntu-latest
@@ -13,8 +16,8 @@ jobs:
       run:
         working-directory: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
@@ -30,11 +33,11 @@ jobs:
       run:
         working-directory: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: latest
-      - uses: actions/setup-node@v4
+          bun-version: 1.4.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
       - name: Install libsecret (keytar, a hard dependency of the kg bin, links it on Linux)
@@ -71,8 +74,8 @@ jobs:
       run:
         working-directory: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
@@ -85,8 +88,8 @@ jobs:
       run:
         working-directory: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
@@ -114,10 +117,10 @@ jobs:
       KG_REQUIRE_DB: '1'
       EMBEDDING_PROVIDER: fixture
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - name: Start SurrealDB (same engine version as scripts/local-db.sh)
         working-directory: .
@@ -137,8 +140,8 @@ jobs:
       run:
         working-directory: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
@@ -154,8 +157,8 @@ jobs:
       run:
         working-directory: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
@@ -173,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: scripts/check-no-private-compute.sh
 
   # Secret scanning. Secretless, so it runs on fork PRs. Pull requests scan their own
@@ -185,7 +188,7 @@ jobs:
       GITLEAKS_VERSION: 8.28.0
       GITLEAKS_SHA256: a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - name: Install gitleaks
@@ -202,7 +205,7 @@ jobs:
       - name: Scan tree
         if: github.event_name != 'pull_request'
         run: scripts/gitleaks-scan.sh tree
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
       - name: Rules still catch what they should

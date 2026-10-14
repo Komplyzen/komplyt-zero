@@ -41,7 +41,7 @@ describe('.gitleaks.toml', () => {
   afterEach(() => dir && rmSync(dir, { recursive: true, force: true }));
 
   it.each([
-    ['a SurrealDB Cloud hostname', () => `KG_DB_URL=wss://${['abc-123', '<redacted-region>', 'surreal', 'cloud'].join('.')}/rpc`],
+    ['a SurrealDB Cloud hostname', () => `KG_DB_URL=wss://${['abc-123', 'aws-xyz1', 'surreal', 'cloud'].join('.')}/rpc`],
     ['a JWT secret', () => `KG_JWT_SECRET=${random()}`],
     ['a signin secret in JSON', () => `{"KG_SIGNIN_SECRET": "${random()}"}`],
     ['a purge job secret', () => `PURGE_JOB_SECRET: ${random()}`],
