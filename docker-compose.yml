@@ -1,0 +1,102 @@
+# Self-hosted Zero: SurrealDB + Ollama embeddings + the server in local auth mode.
+#
+#   KG_JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
+#
+# MCP endpoint: http://localhost:3000/mcp  (no token needed, see below)
+#
+# KG_AUTH_MODE=local turns token checking OFF: anyone who can reach port 3000 is the one local
+# user. The port is therefore published on 127.0.0.1 only. Do not change that to 0.0.0.0, and
+# do not expose it through a proxy, unless something in front of it authenticates callers.
+#
+# Data lives in the `surreal-data` volume (the migrations are applied once, then skipped).
+# The first start downloads the embedding model (bge-m3, roughly 1.2 GB) into `ollama-data`.
+# Switching the embedding model on an existing volume requires `bun run bin/reembed.ts`.
+
+name: kg-zero
+
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:v3.2.4
+    command: start --user root --pass root rocksdb:/data/kg.db
+    # The image runs as an unprivileged user that cannot write to a fresh named volume.
+    user: root
+    # Not published to the host: only the other services need it.
+    volumes:
+      - surreal-data:/data
+    healthcheck:
+      test: ["CMD", "/surreal", "isready", "--endpoint", "http://localhost:8000"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # One-shot: creates the namespace/database and applies database/migrations/*.surql in order.
+  # Skips everything when the baseline is already there (the baseline is not re-runnable).
+  migrate:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+    volumes:
+      - ./database/migrations:/migrations:ro
+      - ./scripts/compose-migrate.sh:/compose-migrate.sh:ro
+    environment:
+      SURREAL_HTTP: http://surrealdb:8000
+      KG_DB_NS: kg
+      KG_DB_NAME: main
+    entrypoint: ["/bin/sh", "/compose-migrate.sh"]
+    restart: "no"
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
+
+  # One-shot: downloads the embedding model (a no-op once it is in the volume).
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${EMBEDDING_MODEL:-bge-m3}"]
+    restart: "no"
+
+  kg:
+    build:
+      context: ./src
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      ollama-pull:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      KG_DB_URL: ws://surrealdb:8000
+      KG_DB_USER: root
+      KG_DB_PASS: root
+      KG_DB_NS: kg
+      KG_DB_NAME: main
+      # Authenticates the server's own SurrealDB sign-in (not a user token). Required: 32+ chars.
+      # Its hash is stored on first boot; changing it later needs the rotation in docs/signin-secret.md.
+      KG_JWT_SECRET: ${KG_JWT_SECRET:?set KG_JWT_SECRET to at least 32 random characters, e.g. KG_JWT_SECRET=$(openssl rand -hex 32)}
+      KG_AUTH_MODE: local
+      # Local mode binds 127.0.0.1 by default, which inside the container is unreachable from the
+      # published port. Listen on all container interfaces; the host side stays loopback-only (ports above).
+      LISTEN_ADDR: 0.0.0.0:3000
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
+      EMBEDDING_BASE_URL: http://ollama:11434
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3}
+    restart: unless-stopped
+
+volumes:
+  surreal-data:
+  ollama-data:

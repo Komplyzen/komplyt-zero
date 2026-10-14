@@ -1,0 +1,15 @@
+-- Migration 036: drop the index 035 briefly defined on kg_auth_session.created_at
+--
+-- The first version of 035 also created `kg_auth_session_created_at`. It was
+-- removed from 035 before release (SIGNIN runs on every request, so the index
+-- would add a write to the hottest path), but 035 had already been applied to
+-- staging, and migrations are tracked by filename, so the edit never reached
+-- it. Databases that applied the first version still carry the index; fresh
+-- databases never had it.
+--
+-- This migration converges both: it drops the index where it exists and is a
+-- no-op elsewhere. Migrations must not be edited once applied anywhere; this
+-- is the forward fix for that mistake.
+--
+-- Rollback: DEFINE INDEX kg_auth_session_created_at ON kg_auth_session FIELDS created_at;
+REMOVE INDEX IF EXISTS kg_auth_session_created_at ON kg_auth_session;

@@ -1,0 +1,80 @@
+# Secret scanning. Extends the gitleaks default ruleset with the credential shapes this
+# project actually uses. Run by scripts/gitleaks-scan.sh (pre-commit hook and CI).
+#
+# Keep real hostnames, keys and tokens OUT of this file: it is public and scanned itself.
+
+title = "komplyt-zero secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "surrealdb-cloud-host"
+description = "SurrealDB Cloud instance hostname (reveals an internet-reachable database)"
+regex = '''(?i)\b[a-z0-9][a-z0-9-]*\.aws-[a-z0-9-]+\.surreal\.cloud\b'''
+keywords = ["<surrealdb-cloud-domain>"]
+
+[[rules]]
+id = "kg-server-secret-assignment"
+description = "Server secret assigned a real-looking value (JWT, signin, purge, bypass)"
+regex = '''(?i)\b(?:KG_JWT_SECRET|JWT_SECRET|KG_SIGNIN_SECRET|PURGE_JOB_SECRET|VERCEL_BYPASS_SECRET)\b["']?\s*[=:]\s*["']?([A-Za-z0-9+/_=-]{24,})'''
+keywords = ["jwt_secret", "signin_secret", "purge_job_secret", "vercel_bypass_secret"]
+secretGroup = 1
+entropy = 3.0
+
+[[rules]]
+id = "kg-db-password-assignment"
+description = "SurrealDB password assigned a real-looking value"
+regex = '''(?i)\bKG_DB_PASS\b["']?\s*[=:]\s*["']?([^\s"'$<>{}()]{8,})'''
+keywords = ["kg_db_pass"]
+secretGroup = 1
+entropy = 2.5
+
+[[rules]]
+id = "embedding-provider-key-assignment"
+description = "Cohere, Jina or Voyage API key assigned a real-looking value"
+regex = '''(?i)\b(?:COHERE_API_KEY|JINA_API_KEY|VOYAGE_API_KEY|KG_VOYAGE_API_KEY|KG_EMBEDDING_API_KEY)\b["']?\s*[=:]\s*["']?([A-Za-z0-9_-]{30,})'''
+keywords = ["cohere_api_key", "jina_api_key", "voyage_api_key", "embedding_api_key"]
+secretGroup = 1
+entropy = 3.0
+
+[[rules]]
+id = "jina-api-key"
+description = "Jina AI API key"
+regex = '''\bjina_[A-Za-z0-9]{32,}\b'''
+keywords = ["jina_"]
+
+[[rules]]
+id = "voyage-api-key"
+description = "Voyage AI API key"
+regex = '''\bpa-[A-Za-z0-9_-]{40,}\b'''
+keywords = ["pa-"]
+entropy = 3.5
+
+[[rules]]
+id = "logtail-token-assignment"
+description = "Better Stack (Logtail) source token assigned a real-looking value"
+regex = '''(?i)\bLOGTAIL_TOKEN\b["']?\s*[=:]\s*["']?([A-Za-z0-9]{20,})'''
+keywords = ["logtail_token"]
+secretGroup = 1
+entropy = 3.0
+
+[allowlist]
+description = "Placeholders and lockfiles"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)bun\.lockb?$''',
+  '''(^|/)\.gitleaks\.toml$''',
+]
+regexes = [
+  # Documentation placeholders such as your-key, your-32-char-minimum-secret-here!, changeme, <secret>.
+  '''(?i)(your[-_]|changeme|change-me|example|placeholder|dummy|xxxx|<[a-z_-]+>|replace-with)''',
+  # Documented throwaway values for local runs, CI and tests ("unit-test-secret-at-least-32-characters!!").
+  '''(?i)\b(?:unit-test|test|local|local-test|ci-only|bench-local)-secret\b''',
+  '''(?i)\btest-secret-that-is-at-least-\d+-characters\b''',
+  '''(?i)\bbench-local-secret-not-used-for-tokens''',
+  # Schema declarations such as `KG_DB_PASS: z.string()`.
+  '''^z\.[a-z]+$''',
+  # Values read from the environment or a secret store are not literals.
+  '''\$\{?[A-Z_]+\}?''',
+]

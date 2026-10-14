@@ -1,0 +1,21 @@
+-- Migration 034: row-scope kg_auth_session reads (LYT-314)
+--
+-- Migration 006 defined kg_auth_session PERMISSIONS FOR select FULL, so any
+-- signed-in tenant could SELECT every other tenant's session row (tenantId,
+-- principals, sub, scope, projects). It was flagged in 033 as blocking going
+-- public.
+--
+-- The table cannot be PERMISSIONS NONE: every other table's RLS reads
+-- $auth.tenantId / $auth.principals, and $auth is this table's record, so
+-- field access through it is evaluated under THIS table's select permission.
+-- `WHERE id = $auth` keeps that working while hiding every other row,
+-- including other sessions of the same tenant.
+--
+-- Safe to apply any time after 006: this changes DEFINE TABLE only. It does
+-- NOT touch DEFINE ACCESS kg_server (OVERWRITE there regenerates the signing
+-- key and invalidates every live token), so existing sessions keep working.
+-- Idempotent (OVERWRITE). The table's fields are unchanged and untouched here.
+--
+-- Rollback: re-run the DEFINE TABLE line from 006 (re-opens the leak).
+DEFINE TABLE OVERWRITE kg_auth_session SCHEMAFULL
+  PERMISSIONS FOR select WHERE id = $auth, FOR create, update, delete NONE;

@@ -1,0 +1,30 @@
+-- Migration 035: timestamp kg_auth_session rows so they can be pruned
+--
+-- Every scoped request signs in (the pool creates a fresh session per
+-- request), and each SIGNIN CREATEs a kg_auth_session row that nothing ever
+-- deleted. The table grows with traffic. The server now prunes rows older
+-- than KG_SESSION_RETENTION_HOURS (default 24h, src/session-prune.ts); that
+-- needs a creation time.
+--
+-- DEFINE FIELD and a backfill only: DEFINE ACCESS is untouched, so live
+-- tokens keep working. SIGNIN's CREATE (033) does not list created_at; the
+-- DEFAULT fills it.
+--
+-- No index on created_at, deliberately. SIGNIN runs on every request, so an
+-- index would add a write to the hottest path to speed up an hourly query,
+-- and building one would scan the whole never-pruned table during deploy.
+-- Once the backlog is pruned the table holds ~retention-window rows, which
+-- the hourly scan handles cheaply. Revisit if the table stays large.
+--
+-- The backfill is one UPDATE over rows that predate this migration, stamped
+-- "now": they are pruned one retention window after it runs, so the first
+-- prune cannot shrink the table until then. On a very large table, count
+-- first (SELECT count() FROM kg_auth_session GROUP ALL); if it is in the
+-- millions, expect the migrate step to take noticeably longer than usual.
+-- Idempotent: re-running only stamps rows still lacking created_at.
+--
+-- Rollback: REMOVE FIELD created_at ON kg_auth_session;
+--           (and set KG_SESSION_PRUNE=false first, or the pruner's query
+--           matches nothing and silently does nothing)
+DEFINE FIELD OVERWRITE created_at ON kg_auth_session TYPE datetime DEFAULT time::now();
+UPDATE kg_auth_session SET created_at = time::now() WHERE created_at = NONE;

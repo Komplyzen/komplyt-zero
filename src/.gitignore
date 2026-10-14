@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Internal development/debug scripts (not tests)
+test/analyze-*.ts
+test/check-*.ts
+test/cluster-*.ts
+test/build-*.ts
+test/extract-*.ts
+test/demo-decay-*.ts
+test/demo-methodology-*.ts
+test/demo-poincare*.ts
+test/edge-cluster-*.ts
+test/process-recipes.json
+test/test-tier-gate.ts

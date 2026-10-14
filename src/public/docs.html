@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Komplyt Zero - Knowledge Graph Documentation</title>
+  <meta name="description" content="Persistent memory for AI agents. Connect Claude, ChatGPT, Cursor, and more to a shared knowledge graph.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zero: {
+              bg: '#0a0a0f',
+              surface: '#12121a',
+              border: '#1e1e2e',
+              accent: '#009ACE',
+              accentHover: '#00B4E6',
+              text: '#e2e2e9',
+              muted: '#71717a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    pre { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+    .tab-btn.active { border-color: #009ACE; color: #e2e2e9; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    details summary { cursor: pointer; }
+    details summary::-webkit-details-marker { display: none; }
+  </style>
+</head>
+<body class="bg-zero-bg text-zero-text min-h-screen">
+
+  <!-- Header -->
+  <header class="border-b border-zero-border">
+    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-8 h-6" viewBox="-10 -10 307.45 259.06" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 25.14,0 L 115.99,0 A 25.14 25.14 0 0 1 138.52,13.98 L 64.48,119.53 L 138.52,225.08 A 25.14 25.14 0 0 1 115.99,239.06 L 25.14,239.06 A 25.14 25.14 0 0 1 0,213.92 L 0,124.37 L 5.17,119.53 L 0,114.69 L 0,25.14 A 25.14 25.14 0 0 1 25.14,0 Z" fill="#009ACE"/>
+          <path d="M 171.46,0 L 262.31,0 A 25.14 25.14 0 0 1 287.45,25.14 L 287.45,113.56 L 281.07,119.53 L 287.45,125.5 L 287.45,213.92 A 25.14 25.14 0 0 1 262.31,239.06 L 171.46,239.06 A 25.14 25.14 0 0 1 146.32,213.92 L 146.32,125.38 L 152.57,119.53 L 146.32,113.68 L 146.32,25.14 A 25.14 25.14 0 0 1 171.46,0 Z" fill="#009ACE"/>
+        </svg>
+        <span class="font-semibold">Komplyt</span>
+        <span class="text-zero-muted">/</span>
+        <span class="text-zero-muted">Knowledge Graph</span>
+      </div>
+      <a href="https://kompl.yt" class="text-sm text-zero-muted hover:text-zero-text transition">kompl.yt</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-4xl mx-auto px-6 py-16">
+    <h1 class="text-4xl font-bold mb-4">Persistent Memory for AI Agents</h1>
+    <p class="text-xl text-zero-muted max-w-2xl">
+      Working memory that survives context compression. Record decisions, surface relevant history, let knowledge decay naturally.
+    </p>
+    <div class="mt-8 flex gap-4">
+      <a href="#install" class="px-5 py-2.5 bg-zero-accent hover:bg-zero-accentHover rounded-lg font-medium transition">Get Started</a>
+      <a href="#tools" class="px-5 py-2.5 border border-zero-border hover:border-zero-muted rounded-lg font-medium transition">View Tools</a>
+    </div>
+  </section>
+
+  <!-- Quick Install -->
+  <section id="install" class="max-w-4xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6">Quick Install</h2>
+
+    <!-- Tabs -->
+    <div class="flex gap-1 border-b border-zero-border mb-6">
+      <button class="tab-btn active px-4 py-2 text-sm border-b-2 border-transparent text-zero-muted hover:text-zero-text transition" data-tab="claude-web">Claude.ai</button>
+      <button class="tab-btn px-4 py-2 text-sm border-b-2 border-transparent text-zero-muted hover:text-zero-text transition" data-tab="claude-code">Claude Code</button>
+      <button class="tab-btn px-4 py-2 text-sm border-b-2 border-transparent text-zero-muted hover:text-zero-text transition" data-tab="chatgpt">ChatGPT</button>
+      <button class="tab-btn px-4 py-2 text-sm border-b-2 border-transparent text-zero-muted hover:text-zero-text transition" data-tab="cursor">Cursor</button>
+      <button class="tab-btn px-4 py-2 text-sm border-b-2 border-transparent text-zero-muted hover:text-zero-text transition" data-tab="other">Other</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content active" id="claude-web">
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <ol class="space-y-3 text-zero-muted">
+          <li><span class="text-zero-text font-medium">1.</span> Open <strong class="text-zero-text">Settings → Connectors → Add custom connector</strong></li>
+          <li><span class="text-zero-text font-medium">2.</span> Enter URL: <code class="bg-zero-bg px-2 py-0.5 rounded text-zero-accent">https://kg.kompl.yt/mcp</code></li>
+          <li><span class="text-zero-text font-medium">3.</span> Leave OAuth client ID/secret empty (auto-registered)</li>
+          <li><span class="text-zero-text font-medium">4.</span> Click <strong class="text-zero-text">Add</strong>, then <strong class="text-zero-text">Connect</strong></li>
+          <li><span class="text-zero-text font-medium">5.</span> Enter your org, email, and API key on the authorize page</li>
+          <li><span class="text-zero-text font-medium">6.</span> Enable the connector via the tools menu in chat</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tab-content" id="claude-code">
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <p class="text-zero-muted mb-4">Add via CLI with your API key:</p>
+        <pre class="bg-zero-bg border border-zero-border rounded-lg p-4 overflow-x-auto text-sm"><code>claude mcp add --transport http kg https://kg.kompl.yt/mcp \
+  --header "Authorization: Bearer $KG_API_KEY" \
+  --header "X-KG-User: you@example.com" \
+  --header "X-KG-Org: your-org"</code></pre>
+      </div>
+    </div>
+
+    <div class="tab-content" id="chatgpt">
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <p class="text-zero-muted mb-4">Requires <strong class="text-zero-text">Developer mode</strong> (Plus/Pro/Team/Enterprise):</p>
+        <ol class="space-y-3 text-zero-muted">
+          <li><span class="text-zero-text font-medium">1.</span> Enable: <strong class="text-zero-text">Settings → Apps & Connectors → Advanced → Developer mode</strong></li>
+          <li><span class="text-zero-text font-medium">2.</span> Click <strong class="text-zero-text">Create</strong> or "Add custom connector"</li>
+          <li><span class="text-zero-text font-medium">3.</span> URL: <code class="bg-zero-bg px-2 py-0.5 rounded text-zero-accent">https://kg.kompl.yt/mcp</code></li>
+          <li><span class="text-zero-text font-medium">4.</span> Authentication: <strong class="text-zero-text">OAuth</strong> (auto-discovery)</li>
+          <li><span class="text-zero-text font-medium">5.</span> Complete authorization with your credentials</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tab-content" id="cursor">
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <p class="text-zero-muted mb-4">Add to <code class="bg-zero-bg px-2 py-0.5 rounded">.cursor/mcp.json</code>:</p>
+        <pre class="bg-zero-bg border border-zero-border rounded-lg p-4 overflow-x-auto text-sm"><code>{
+  "mcpServers": {
+    "kg": {
+      "transport": "http",
+      "url": "https://kg.kompl.yt/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY",
+        "X-KG-User": "you@example.com",
+        "X-KG-Org": "your-org"
+      }
+    }
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="tab-content" id="other">
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <p class="text-zero-muted mb-4">Any MCP-compatible client can connect via HTTP transport:</p>
+        <div class="space-y-4">
+          <div>
+            <p class="text-zero-text font-medium mb-2">Endpoint</p>
+            <code class="bg-zero-bg px-3 py-1.5 rounded block text-zero-accent">https://kg.kompl.yt/mcp</code>
+          </div>
+          <div>
+            <p class="text-zero-text font-medium mb-2">Authentication</p>
+            <p class="text-zero-muted">OAuth 2.1 with PKCE (auto-discovery via <code class="bg-zero-bg px-1.5 py-0.5 rounded">/.well-known/oauth-authorization-server</code>)</p>
+            <p class="text-zero-muted mt-1">Or direct Bearer token with <code class="bg-zero-bg px-1.5 py-0.5 rounded">X-KG-User</code> and <code class="bg-zero-bg px-1.5 py-0.5 rounded">X-KG-Org</code> headers</p>
+          </div>
+          <div>
+            <p class="text-zero-text font-medium mb-2">Protocol</p>
+            <p class="text-zero-muted">MCP Streamable HTTP (JSON-RPC 2.0)</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tools Reference -->
+  <section id="tools" class="max-w-4xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6">Tools</h2>
+
+    <div class="space-y-4">
+      <!-- kg_session_start -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_session_start</code>
+            <span class="text-zero-muted">Start a working session</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Sessions drive decay scoring. Start one per work block; nodes decay between sessions.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>project?: string
+create_project?: boolean
+notes?: string</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Example</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>kg_session_start({
+  project: "api-redesign"
+})</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- kg_session_info -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_session_info</code>
+            <span class="text-zero-muted">Current session details</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Read-only. Returns the current session and node counts by type.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>(no parameters)</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Example</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>kg_session_info({})</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- kg_session_end -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_session_end</code>
+            <span class="text-zero-muted">End the current session</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Ends the active session. Nodes and edges are kept.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>(no parameters)</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Example</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>kg_session_end({})</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- kg_node_create -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_node_create</code>
+            <span class="text-zero-muted">Record knowledge artifacts</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Capture observations, decisions, problems, approaches, and more. Generates embeddings for semantic search.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>type: "observation" | "decision" |
+      "problem" | "approach" | ...
+content: string
+status?: "open" | "resolved" | ...
+relates_to?: string[] // node IDs, max 20
+project?: string
+container?: string
+tags?: string[]</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Example</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>kg_node_create({
+  type: "decision",
+  content: "Use Zod for validation",
+  tags: ["architecture"]
+})</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- kg_query -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_query</code>
+            <span class="text-zero-muted">Search the knowledge graph</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Semantic search with spreading activation. Finds related nodes through learned edges.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>text?: string  // semantic query
+type?: string  // filter by type
+status?: string
+project?: string
+spread?: boolean  // default: true
+limit?: number    // default: 10</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Example</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>kg_query({
+  text: "authentication flow",
+  type: "decision",
+  limit: 5
+})</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- kg_node_update -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_node_update</code>
+            <span class="text-zero-muted">Update and reactivate nodes</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Modify node status or content. Reactivates the node, preventing decay.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>id: string      // node ID
+status?: string // new status
+content?: string // regenerates embedding</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Example</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>kg_node_update({
+  id: "node:abc123",
+  status: "resolved"
+})</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- kg_relate -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_relate</code>
+            <span class="text-zero-muted">Create explicit relationships</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Create or reinforce edges between nodes. Strengthens spreading activation paths.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>from: string  // source node ID
+to: string    // target node ID</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Example</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>kg_relate({
+  from: "node:abc",
+  to: "node:xyz"
+})</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- kg_status -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_status</code>
+            <span class="text-zero-muted">Get current session state</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Overview of session, open problems/todos, and recent decisions.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>project?: string  // filter by project</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Returns</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>current_session: number
+total_nodes: number
+open_todos: Node[]
+open_problems: Node[]
+recent_decisions: Node[]</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- Concepts -->
+  <section id="concepts" class="max-w-4xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6">Concepts</h2>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <h3 class="font-semibold mb-2">Sessions</h3>
+        <p class="text-zero-muted text-sm">Start a session per work block. Decay happens between sessions, surfacing recently active knowledge.</p>
+      </div>
+
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <h3 class="font-semibold mb-2">Decay</h3>
+        <p class="text-zero-muted text-sm">Old nodes fade over time. Use <code class="text-zero-accent">kg_node_update</code> or <code class="text-zero-accent">kg_query</code> to reactivate what matters.</p>
+      </div>
+
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <h3 class="font-semibold mb-2">What changes</h3>
+        <p class="text-zero-muted text-sm">Only <code class="text-zero-accent">kg_node_update</code> edits node content. Queries, relates and session starts update usage metrics (decay and activation scores) that weight future results.</p>
+      </div>
+
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <h3 class="font-semibold mb-2">Spreading Activation</h3>
+        <p class="text-zero-muted text-sm">Queries activate connected nodes through learned edges. Related knowledge surfaces automatically.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-zero-border mt-12">
+    <div class="max-w-4xl mx-auto px-6 py-8 flex items-center justify-between">
+      <p class="text-zero-muted text-sm">Part of <a href="https://kompl.yt" class="text-zero-accent hover:underline">Komplyt</a></p>
+      <div class="flex gap-6 text-sm">
+        <a href="https://kg.kompl.yt/.well-known/oauth-authorization-server" class="text-zero-muted hover:text-zero-text transition">OAuth Metadata</a>
+        <a href="https://kg.kompl.yt/health" class="text-zero-muted hover:text-zero-text transition">Status</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

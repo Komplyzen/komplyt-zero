@@ -1,0 +1,12 @@
+# CODEOWNERS - require review for sensitive paths
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Workflow changes require review from platform team
+/.github/workflows/ @Komplyzen/komplyzen
+/.github/CODEOWNERS @Komplyzen/komplyzen
+
+# Enterprise features require review
+/src/ee/ @Komplyzen/komplyzen
+
+# Database migrations require review
+/database/ @Komplyzen/komplyzen

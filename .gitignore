@@ -1,0 +1,60 @@
+# Node.js
+node_modules/
+
+# Agent state
+.pi/
+
+# Database files
+.kg/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+# DB dumps/backups only — NOT migrations or schema (those must be tracked).
+# A blanket *.surql previously hid migrations/ from git.
+kg-backup-*.surql
+backups/*.surql
+
+# Terraform local state/providers
+.terraform/
+# Provider lock from local `terraform init`; CI fresh-inits on linux and a
+# darwin-only lock would break it. Provider versions are pinned in main.tf.
+.terraform.lock.hcl
+
+# Local agent state & worktrees (multi-GB)
+.claude/
+# DB backup dumps (multi-GB)
+backups/
+# Local session/debug artifacts
+history.txt
+kg-session-dump.md
+*.log
+# BMAD workflow framework — installed via the BMAD installer, not vendored
+_bmad/
+# Internal artifacts (creative logs, specs, findings) — kept out of this repository
+_bmad-output/
+FINDINGS-*.md
+# Internal screenshots
+Screenshot*.png
+*-backup-*.surql
+# SurrealKit generated files
+database/setup.surql
+database/snapshots/
+database/seed/
+database/snapshots/*.json
+database/rollouts/*.toml
+surreal/
+*.surql
+!database/**/*.surql
+bench-results/

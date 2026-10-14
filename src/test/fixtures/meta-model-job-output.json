@@ -1,0 +1,400 @@
+[
+ {
+  "explanation": "This meta-model reflects emerging patterns. Results may shift as more work is recorded. This reflects recorded behavior patterns, not prescribed process.",
+  "lens": "resiliency",
+  "model": {
+   "bus_factor_by_domain": {
+    "auth,seed": 2,
+    "data,seed": 2
+   },
+   "handoff_coverage_experimental": 0,
+   "knowledge_concentration": {
+    "auth,seed": {
+     "contributors": 2,
+     "risk": "medium"
+    },
+    "data,seed": {
+     "contributors": 2,
+     "risk": "medium"
+    }
+   },
+   "orphan_contributor_ratio": 0,
+   "orphan_risk": [],
+   "person_dependency": [
+    {
+     "concentration": 0.5,
+     "domains": [
+      "seed",
+      "data",
+      "auth"
+     ],
+     "person": "ann"
+    },
+    {
+     "concentration": 0.5,
+     "domains": [
+      "seed",
+      "data",
+      "auth"
+     ],
+     "person": "bob"
+    }
+   ]
+  },
+  "scope": "container",
+  "scope_id": "",
+  "status": "provisional"
+ },
+ {
+  "explanation": "This meta-model reflects emerging patterns. Results may shift as more work is recorded. This reflects recorded behavior patterns, not prescribed process.",
+  "lens": "methodology",
+  "model": {
+   "decision_heuristics": [],
+   "documentation_rules": [],
+   "nodes_analyzed": 60,
+   "organizing_concepts": [
+    {
+     "connected_topics": [],
+     "content": "Session 4 step 9: observation about auth flow",
+     "hierarchy_level": "root"
+    },
+    {
+     "connected_topics": [],
+     "content": "Session 1 step 9: observation about auth flow",
+     "hierarchy_level": "root"
+    },
+    {
+     "connected_topics": [],
+     "content": "Session 0 step 9: observation about auth flow",
+     "hierarchy_level": "organizing"
+    },
+    {
+     "connected_topics": [],
+     "content": "Session 2 step 9: observation about auth flow",
+     "hierarchy_level": "organizing"
+    },
+    {
+     "connected_topics": [],
+     "content": "Session 3 step 9: observation about auth flow",
+     "hierarchy_level": "organizing"
+    },
+    {
+     "connected_topics": [],
+     "content": "Session 5 step 9: observation about auth flow",
+     "hierarchy_level": "organizing"
+    },
+    {
+     "connected_topics": [
+      "Session 0 step 9: observation about auth flow"
+     ],
+     "content": "Session 0 step 8: decision about data flow",
+     "hierarchy_level": "intermediate"
+    },
+    {
+     "connected_topics": [
+      "Session 4 step 9: observation about auth flow"
+     ],
+     "content": "Session 4 step 8: decision about data flow",
+     "hierarchy_level": "intermediate"
+    },
+    {
+     "connected_topics": [
+      "Session 3 step 9: observation about auth flow"
+     ],
+     "content": "Session 3 step 8: decision about data flow",
+     "hierarchy_level": "intermediate"
+    },
+    {
+     "connected_topics": [
+      "Session 1 step 9: observation about auth flow"
+     ],
+     "content": "Session 1 step 8: decision about data flow",
+     "hierarchy_level": "intermediate"
+    }
+   ],
+   "quality_gates": [],
+   "recovery_patterns": [
+    {
+     "not_done": "no unresolved instances found",
+     "problem_type": "general problem",
+     "resolution": "decision made"
+    }
+   ],
+   "sessions_analyzed": 6,
+   "structural_invariants": [
+    {
+     "context": "sessions containing problems",
+     "invariant": "problems followed by resolution (decision/mitigation/workaround)",
+     "violation_rate": 0
+    }
+   ]
+  },
+  "scope": "container",
+  "scope_id": "",
+  "status": "provisional"
+ },
+ {
+  "explanation": "This meta-model reflects emerging patterns. Results may shift as more work is recorded. This reflects recorded behavior patterns, not prescribed process.",
+  "lens": "process",
+  "model": {
+   "edges_analyzed": 117,
+   "global_transitions": [
+    {
+     "count": 1,
+     "from_content": "Session 2 step 0: decision about auth flow",
+     "to_content": "Session 3 step 1: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 4: decision about data flow",
+     "to_content": "Session 1 step 6: problem about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 2 step 1: observation about data flow",
+     "to_content": "Session 2 step 3: mitigation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 2: problem about data flow",
+     "to_content": "Session 1 step 3: mitigation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 5 step 2: problem about data flow",
+     "to_content": "Session 5 step 3: mitigation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 2 step 8: decision about data flow",
+     "to_content": "Session 2 step 9: observation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 3: mitigation about auth flow",
+     "to_content": "Session 1 step 4: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 5 step 6: problem about auth flow",
+     "to_content": "Session 5 step 8: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 0: decision about auth flow",
+     "to_content": "Session 2 step 1: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 5 step 7: mitigation about data flow",
+     "to_content": "Session 5 step 9: observation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 0: decision about auth flow",
+     "to_content": "Session 0 step 1: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 3 step 1: observation about data flow",
+     "to_content": "Session 3 step 3: mitigation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 5: observation about data flow",
+     "to_content": "Session 0 step 6: problem about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 3 step 0: decision about auth flow",
+     "to_content": "Session 4 step 1: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 2 step 3: mitigation about auth flow",
+     "to_content": "Session 2 step 5: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 8: decision about data flow",
+     "to_content": "Session 1 step 9: observation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 3: mitigation about auth flow",
+     "to_content": "Session 1 step 5: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 5 step 1: observation about data flow",
+     "to_content": "Session 5 step 3: mitigation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 0: decision about auth flow",
+     "to_content": "Session 5 step 1: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 4: decision about data flow",
+     "to_content": "Session 4 step 5: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 1: observation about data flow",
+     "to_content": "Session 2 step 2: problem about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 1: observation about data flow",
+     "to_content": "Session 0 step 2: problem about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 7: mitigation about data flow",
+     "to_content": "Session 0 step 8: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 0: decision about auth flow",
+     "to_content": "Session 4 step 1: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 3 step 2: problem about data flow",
+     "to_content": "Session 3 step 4: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 1: observation about data flow",
+     "to_content": "Session 0 step 3: mitigation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 1: observation about data flow",
+     "to_content": "Session 4 step 2: problem about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 3: mitigation about auth flow",
+     "to_content": "Session 4 step 5: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 4: decision about data flow",
+     "to_content": "Session 4 step 6: problem about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 5 step 7: mitigation about data flow",
+     "to_content": "Session 5 step 8: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 5 step 3: mitigation about auth flow",
+     "to_content": "Session 5 step 5: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 5: observation about data flow",
+     "to_content": "Session 0 step 7: mitigation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 3: mitigation about auth flow",
+     "to_content": "Session 4 step 4: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 3: mitigation about auth flow",
+     "to_content": "Session 0 step 5: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 0: decision about auth flow",
+     "to_content": "Session 1 step 1: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 2: problem about data flow",
+     "to_content": "Session 4 step 3: mitigation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 3 step 1: observation about data flow",
+     "to_content": "Session 3 step 2: problem about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 0: decision about auth flow",
+     "to_content": "Session 1 step 1: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 2 step 5: observation about data flow",
+     "to_content": "Session 2 step 7: mitigation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 2 step 6: problem about auth flow",
+     "to_content": "Session 2 step 8: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 5: observation about data flow",
+     "to_content": "Session 1 step 6: problem about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 2 step 3: mitigation about auth flow",
+     "to_content": "Session 2 step 4: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 2 step 5: observation about data flow",
+     "to_content": "Session 2 step 6: problem about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 5 step 5: observation about data flow",
+     "to_content": "Session 5 step 7: mitigation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 2 step 7: mitigation about data flow",
+     "to_content": "Session 2 step 9: observation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 7: mitigation about data flow",
+     "to_content": "Session 4 step 8: decision about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 0 step 4: decision about data flow",
+     "to_content": "Session 0 step 5: observation about data flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 4 step 2: problem about data flow",
+     "to_content": "Session 5 step 3: mitigation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 3 step 7: mitigation about data flow",
+     "to_content": "Session 3 step 9: observation about auth flow"
+    },
+    {
+     "count": 1,
+     "from_content": "Session 1 step 7: mitigation about data flow",
+     "to_content": "Session 1 step 8: decision about data flow"
+    }
+   ],
+   "recipes": [],
+   "sessions_analyzed": 0
+  },
+  "scope": "container",
+  "scope_id": "",
+  "status": "provisional"
+ }
+]

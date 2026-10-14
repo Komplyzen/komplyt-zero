@@ -1,0 +1,64 @@
+name: Integration CI
+
+on:
+  # Push only: a same-repo PR branch already gets a push event, and a second pull_request run
+  # raced it in the platform concurrency group (the cancelled one posted a stale failure).
+  # Fork PRs go through /ok-to-test.
+  push:
+    branches: ['**']
+
+concurrency:
+  group: integration-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    # Same-repo only — forks use public CI only (no secrets)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.KOMPLYT_CI_APP_ID }}
+          private-key: ${{ secrets.KOMPLYT_CI_PRIVATE_KEY }}
+          repositories: komplyzen-platform,komplyt-zero
+
+      - name: Post pending status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: 'Komplyzen',
+              repo: 'komplyt-zero',
+              sha: context.sha,
+              state: 'pending',
+              context: 'integration-tests',
+              description: 'Integration tests queued...'
+            });
+
+      - name: Validate ref
+        env:
+          REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          REF="$REF"
+          if ! echo "$REF" | grep -qE '^[a-zA-Z0-9/_.-]+$'; then
+            echo "::error::Invalid ref format: $REF"
+            exit 1
+          fi
+
+      - name: Dispatch to private repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          repository: Komplyzen/komplyzen-platform
+          event-type: kg-integration
+          client-payload: |
+            {
+              "ref": ${{ toJSON(github.head_ref || github.ref_name) }},
+              "sha": "${{ github.sha }}",
+              "pr": "${{ github.event.pull_request.number || '' }}"
+            }

@@ -1,0 +1,91 @@
+name: /ok-to-test
+
+# Triggered when a maintainer comments `/ok-to-test <reviewed-sha>` on a fork PR.
+# The sha pins what was reviewed; a push after review invalidates the comment.
+# This dispatches integration tests to run in the private repo.
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  dispatch:
+    # Only run on PR comments (not issues) that START with /ok-to-test, from
+    # maintainers. The exact `/ok-to-test <sha>` form is enforced in the script.
+    if: |
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/ok-to-test') &&
+      (github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.KOMPLYT_CI_APP_ID }}
+          private-key: ${{ secrets.KOMPLYT_CI_PRIVATE_KEY }}
+          repositories: komplyzen-platform,komplyt-zero
+
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            // Verify this is a fork PR (same-repo PRs run integration automatically)
+            if (pr.data.head.repo && pr.data.head.repo.full_name === pr.data.base.repo.full_name) {
+              core.setFailed('This PR is from the same repo - integration tests run automatically');
+              return;
+            }
+
+            // Pin the approval to the commit the maintainer reviewed. The comment
+            // must be exactly `/ok-to-test <sha>` (7-40 hex chars). If the fork
+            // pushed since, the head no longer matches and nothing is dispatched.
+            const body = context.payload.comment.body.trim();
+            const m = /^\/ok-to-test\s+([0-9a-f]{7,40})$/i.exec(body);
+            const head = pr.data.head.sha.toLowerCase();
+            if (!m) {
+              core.setFailed('Comment must be exactly "/ok-to-test <reviewed-commit-sha>"');
+              return;
+            }
+            if (!head.startsWith(m[1].toLowerCase())) {
+              core.setFailed(`Reviewed sha ${m[1]} does not match the current PR head ${head}; re-review and comment again`);
+              return;
+            }
+
+            core.setOutput('sha', head);
+            core.setOutput('number', pr.data.number);
+            console.log(`Fork PR #${pr.data.number} from ${pr.data.head.repo.full_name}`);
+
+      - name: React to comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+      - name: Dispatch to private repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          repository: Komplyzen/komplyzen-platform
+          event-type: kg-ok-to-test
+          client-payload: |
+            {
+              "pr": "${{ steps.pr.outputs.number }}",
+              "sha": "${{ steps.pr.outputs.sha }}"
+            }

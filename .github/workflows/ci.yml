@@ -1,0 +1,214 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+
+  build:
+    # Builds with tsc and runs the compiled kg bin. Secretless, so it runs on
+    # fork PRs. typecheck (--noEmit) never executes the emitted ESM, so import
+    # specifier or native-module (keytar) load failures only show up here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install libsecret (keytar, a hard dependency of the kg bin, links it on Linux)
+        # Not preinstalled on ubuntu-latest. Without it `kg mcp` dies at import with
+        # ERR_DLOPEN_FAILED; end users on Linux need the same package.
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-0
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: kg prints usage
+        run: node dist/bin/kg.js | tee /dev/stderr | grep -q "kg - Knowledge Graph CLI"
+      - name: kg mcp loads (no module-resolution or native-module errors)
+        # Dummy values satisfy env validation; nothing connects. Exit status is
+        # deliberately ignored: without credentials the command exits non-zero,
+        # and local auth mode may change that. Only load failures fail the step.
+        env:
+          KG_DB_URL: ws://127.0.0.1:1
+          KG_DB_USER: ci
+          KG_DB_PASS: ci
+          KG_JWT_SECRET: ci-only-secret-at-least-32-characters-long
+          EMBEDDING_PROVIDER: fixture
+        run: |
+          set +e
+          out=$(timeout 20 node dist/bin/kg.js mcp </dev/null 2>&1)
+          echo "$out"
+          if echo "$out" | grep -Eq "ERR_MODULE_NOT_FOUND|Cannot find (module|package)|SyntaxError|ERR_DLOPEN_FAILED|invalid ELF|libsecret"; then
+            echo "kg mcp failed to load" >&2
+            exit 1
+          fi
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Run unit tests (fixture embeddings)
+        env:
+          EMBEDDING_PROVIDER: fixture
+        run: bun run test:run
+
+  integration:
+    # Runs every suite, including src/test/*.integration.test.ts, against a
+    # throwaway SurrealDB provisioned from the migration chain. Secretless
+    # (fixture embeddings, throwaway root password), so it runs on fork PRs.
+    # KG_REQUIRE_DB=1: an unreachable database fails the job, it never skips.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src
+    env:
+      KG_DB_URL: ws://127.0.0.1:8000
+      KG_DB_USER: root
+      KG_DB_PASS: root
+      KG_DB_NS: kg
+      KG_DB_NAME: test
+      KG_REQUIRE_DB: '1'
+      EMBEDDING_PROVIDER: fixture
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Start SurrealDB (same engine version as scripts/local-db.sh)
+        working-directory: .
+        run: |
+          docker run -d --name surrealdb -p 127.0.0.1:8000:8000 \
+            surrealdb/surrealdb:v3.2.4 start --user root --pass root memory
+      - name: Apply the migration chain
+        working-directory: .
+        run: scripts/apply-migrations.sh
+      - name: Run all suites against SurrealDB
+        run: bun run test:run
+
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Audit dependencies
+        run: bun audit
+
+  # The open-source edition has no src/ee/ (ELv2 code): it must still typecheck, lint and pass its
+  # tests without it.
+  ee-absent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Remove src/ee
+        run: rm -rf ee
+      - run: bun run typecheck
+      - run: bun run lint
+      - name: Run unit tests (fixture embeddings)
+        env:
+          EMBEDDING_PROVIDER: fixture
+        run: bun run test:run
+
+  # The meta-model is computed by a private batch job; this tree only reads it.
+  no-private-compute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/check-no-private-compute.sh
+
+  # Secret scanning. Secretless, so it runs on fork PRs. Pull requests scan their own
+  # commits; pushes scan the tree. The gitleaks release is pinned and its checksum verified.
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: 8.28.0
+      GITLEAKS_SHA256: a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz -C "$RUNNER_TEMP" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Scan pull request commits
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: scripts/gitleaks-scan.sh diff "origin/${BASE_REF}"
+      - name: Scan tree
+        if: github.event_name != 'pull_request'
+        run: scripts/gitleaks-scan.sh tree
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Rules still catch what they should
+        working-directory: src
+        env:
+          REQUIRE_GITLEAKS: '1'
+        run: |
+          bun install --frozen-lockfile
+          bunx vitest run gitleaks-config.test.ts

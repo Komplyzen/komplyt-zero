@@ -1,0 +1,82 @@
+{
+  "name": "komplyt-zero",
+  "version": "1.0.0",
+  "description": "Persistent working memory for AI agents. Knowledge graph with semantic search and spreading activation.",
+  "type": "module",
+  "bin": {
+    "kg": "dist/bin/kg.js"
+  },
+  "license": "SEE LICENSE IN ../LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Komplyzen/komplyt-zero.git"
+  },
+  "homepage": "https://github.com/Komplyzen/komplyt-zero",
+  "bugs": {
+    "url": "https://github.com/Komplyzen/komplyt-zero/issues"
+  },
+  "keywords": [
+    "mcp",
+    "knowledge-graph",
+    "ai-agent",
+    "memory",
+    "semantic-search",
+    "surrealdb"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "bench": "tsx benchmarks/runner.ts",
+    "bench:health": "tsx benchmarks/runner.ts health",
+    "bench:drift": "tsx benchmarks/runner.ts drift",
+    "bench:perf": "tsx benchmarks/runner.ts perf",
+    "bench:baseline": "tsx benchmarks/runner.ts --save-baseline",
+    "bench:smoke": "tsx benchmarks/smoke.ts"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.5.1",
+    "@hono/zod-validator": "^0.8.0",
+    "@logtail/node": "^0.5.8",
+    "@logtail/pino": "^0.5.8",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "hono": "^4.13.5",
+    "jose": "^6.2.4",
+    "keytar": "^7.9.0",
+    "open": "^10.2.0",
+    "pino": "^9.14.0",
+    "surrealdb": "^2.0.8",
+    "zod": "^4.4.3"
+  },
+  "overrides": {
+    "@hono/node-server": "^2.0.5",
+    "hono": "^4.13.5",
+    "fast-uri": "^3.1.7",
+    "brace-expansion": "^5.0.11",
+    "ip-address": "^10.7.2",
+    "postcss": "^8.5.18",
+    "js-yaml": "^4.3.2",
+    "nanoid": "^3.3.18",
+    "qs": "^6.16.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/bun": "^1.3.14",
+    "@types/node": "^22.20.1",
+    "dotenv-cli": "^11.0.0",
+    "esbuild": "^0.25.12",
+    "eslint": "^9.39.5",
+    "pino-pretty": "^13.1.3",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^6.4.3",
+    "vitest": "^4.1.11"
+  }
+}

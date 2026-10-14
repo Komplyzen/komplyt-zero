@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-15T06:50:00.000Z",
+  "gitSha": "f455397",
+  "coherenceMean": 0.44,
+  "coherenceStdDev": 0.20,
+  "embeddingCoverage": 100,
+  "decayDistribution": {
+    "cold": 0,
+    "cooling": 1021,
+    "warm": 736,
+    "hot": 1043,
+    "active": 219
+  },
+  "perfP99": {
+    "kg_query_semantic": 2000,
+    "kg_query_filter": 1000,
+    "kg_session_start": 1000,
+    "kg_relate": 500,
+    "kg_node_update": 500
+  }
+}

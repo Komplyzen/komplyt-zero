@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Enable once per clone:  git config core.hooksPath scripts/hooks
+# CI scans every pull request too, so a missing gitleaks only warns here.
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+scripts/gitleaks-scan.sh staged
+status=$?
+
+if [ "$status" -eq 127 ]; then
+  echo "pre-commit: skipping secret scan (gitleaks not installed); CI will still scan this change." >&2
+  exit 0
+fi
+exit "$status"
