@@ -12,7 +12,7 @@ useDefault = true
 id = "surrealdb-cloud-host"
 description = "SurrealDB Cloud instance hostname (reveals an internet-reachable database)"
 regex = '''(?i)\b[a-z0-9][a-z0-9-]*\.aws-[a-z0-9-]+\.surreal\.cloud\b'''
-keywords = ["<surrealdb-cloud-domain>"]
+keywords = ["surreal.cloud"]
 
 [[rules]]
 id = "kg-server-secret-assignment"
