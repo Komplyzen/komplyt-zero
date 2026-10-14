@@ -48,25 +48,25 @@ async function updateNode(
     reason = 'update';
   }
 
-  const newDecayScore = await activateNode(
-    db,
-    nodeId,
-    ctx.currentSession,
-    reason
-  );
-
+  // Embed first: a content change whose embedding fails is rejected, so a node never
+  // carries a vector that describes its previous content. Nothing has been written yet.
   let newEmbedding: number[] | null = null;
   if (params.content) {
     try {
       const [emb] = await embed.embedDocuments([params.content]);
       newEmbedding = emb;
     } catch (e) {
-      // The update still succeeds and the node keeps its old vector and
-      // embedding_model, which now describe the previous content. Automatic
-      // re-embedding of such stale vectors is tracked separately.
-      logger.warn({ err: e, nodeId }, 'Failed to generate embedding for updated content; keeping the previous embedding');
+      logger.warn({ err: e, nodeId }, 'Failed to generate embedding for updated content');
+      return toolError('INTERNAL', 'Could not generate the embedding for the new content; nothing was changed. Please retry.');
     }
   }
+
+  const newDecayScore = await activateNode(
+    db,
+    nodeId,
+    ctx.currentSession,
+    reason
+  );
 
   const setClauses: string[] = [];
   if (params.status) setClauses.push('status = $status');
@@ -104,7 +104,7 @@ async function updateNode(
 
 export const nodeUpdateTool: ToolHandler<NodeUpdateParams> = {
   name: 'kg_node_update',
-  description: 'Update the status or content of an existing knowledge node and reactivate it. Changing content overwrites the previous content and regenerates the embedding. Requires an active session.',
+  description: 'Update the status or content of an existing knowledge node and reactivate it. Changing content overwrites the previous content and regenerates the embedding; if that fails the update is rejected and the node is unchanged. Requires an active session.',
   inputSchema: nodeUpdateParamsSchema,
   responseSchema: nodeUpdateResponseSchema,
   requiredScope: 'kg:write',

@@ -15,6 +15,8 @@ The issuer is the requirement people trip over, so it is explained first.
 
 Zero never creates users or passwords. Every request carries a bearer JWT, and the server verifies it against the issuer's JWKS. It then uses the token's `tenantId` to sign in to SurrealDB as that tenant, so the database's own record permissions scope every read and write. Without a valid token there is no tenant, and without a tenant there is nothing to query.
 
+Scopes are not an access-control layer yet. The OAuth metadata lists `kg:read` and `kg:write`, but the server adds both to every token that passes the checks below, because some OAuth clients cannot request custom scopes at consent time. Authorization rests on the verified issuer, audience and `tenantId`, not on `scope`. Do not rely on issuing a token without `kg:write` to make it read-only.
+
 The server checks these claims:
 
 | Claim | Required | Meaning |

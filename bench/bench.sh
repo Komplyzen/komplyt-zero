@@ -20,7 +20,7 @@
 #      provider's settings: EMBEDDING_PROVIDER (default cohere, never fixture) with EMBEDDING_API_KEY
 #      (COHERE_API_KEY accepted as the fallback), EMBEDDING_BASE_URL / EMBEDDING_MODEL as needed;
 #      whatever the profile's endpoints need (the gate lists them), optional RUN_ID.
-#      BENCH_ENV=dotenv (default, reads <repo>/.env or BENCH_ENV_FILE) | op (resolves bench/op.env
+#      BENCH_ENV=dotenv (default, reads <repo>/.env or BENCH_ENV_FILE) | op (resolves bench/op.env, a git-ignored copy of bench/op.env.example
 #      via the 1Password CLI). Already-set variables are never overwritten.
 # Output: bench-results/<run_id>/{gate.json,legs/,merged/,SUMMARY.md}
 #
