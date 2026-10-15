@@ -55,6 +55,10 @@ One adapter plus one registry entry: metadata (settings read and required, defau
 
 CI runs type checking, unit tests and a dependency audit on every pull request, including those from forks. Integration tests need database credentials, so for pull requests from forks a maintainer starts them after reviewing the code.
 
+### Dependency updates (maintainers)
+
+Dependabot opens at most two pull requests per ecosystem a month (GitHub Actions, Docker, Compose). Its pull requests run the public CI only. The private integration run needs a secret that Dependabot runs do not receive, and it should not: a new base image, action or package is unreviewed upstream content that would run next to the staging database. So `integration-tests` stays pending, and merging is blocked, until a maintainer has read the diff and comments `/ok-to-test <sha>` with the commit they reviewed. A push after that invalidates the approval, as for forks. Major versions of `oven/bun` and `surrealdb/surrealdb` are ignored: those upgrades are deliberate.
+
 [CLAUDE.md](CLAUDE.md) describes the architecture and the coding conventions in more detail. It is written for AI coding agents, and it is just as useful for people.
 
 ## Where code goes

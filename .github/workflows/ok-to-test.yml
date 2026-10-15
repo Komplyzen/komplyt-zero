@@ -1,6 +1,7 @@
 name: /ok-to-test
 
-# Triggered when a maintainer comments `/ok-to-test <reviewed-sha>` on a fork PR.
+# Triggered when a maintainer comments `/ok-to-test <reviewed-sha>` on a fork PR or a
+# Dependabot PR. Both are untrusted: neither gets the private integration run automatically.
 # The sha pins what was reviewed; a push after review invalidates the comment.
 # This dispatches integration tests to run in the private repo.
 
@@ -44,8 +45,11 @@ jobs:
               pull_number: context.issue.number
             });
 
-            // Verify this is a fork PR (same-repo PRs run integration automatically)
-            if (pr.data.head.repo && pr.data.head.repo.full_name === pr.data.base.repo.full_name) {
+            // Same-repo PRs run integration automatically, except Dependabot's: its content comes
+            // from upstream registries, so a maintainer reads the diff and approves the run.
+            const sameRepo = pr.data.head.repo && pr.data.head.repo.full_name === pr.data.base.repo.full_name;
+            const dependabot = pr.data.user.login === 'dependabot[bot]';
+            if (sameRepo && !dependabot) {
               core.setFailed('This PR is from the same repo - integration tests run automatically');
               return;
             }
@@ -67,7 +71,7 @@ jobs:
 
             core.setOutput('sha', head);
             core.setOutput('number', pr.data.number);
-            console.log(`Fork PR #${pr.data.number} from ${pr.data.head.repo.full_name}`);
+            console.log(`${dependabot ? 'Dependabot' : 'Fork'} PR #${pr.data.number} from ${pr.data.head.repo.full_name}`);
 
       - name: React to comment
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7

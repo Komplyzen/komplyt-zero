@@ -15,8 +15,10 @@ permissions:
 
 jobs:
   dispatch:
-    # Same-repo only (benchmarks need DB access)
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # Same-repo only (benchmarks need DB access). Not for Dependabot PRs (unreviewed upstream content).
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.head_ref || github.ref_name, 'dependabot/')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

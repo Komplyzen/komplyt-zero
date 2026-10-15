@@ -129,7 +129,7 @@ databases' schemas (records and JWT keys ignored).
 `scripts/apply-migrations.sh`, `KG_REQUIRE_DB=1`), and `bun audit`, on every PR
 including forks. Integration suites run
 in a private CI (dispatched by `notify-private.yml`; fork PRs need
-a maintainer's `/ok-to-test`). It provisions a run-scoped database
+a maintainer's `/ok-to-test`; Dependabot PRs are treated the same way). It provisions a run-scoped database
 (`ci_<run_id>`) through the migration chain, runs the suites with
 `KG_REQUIRE_DB=1` (a missing DB is a FAILURE, never a vacuous green), and drops
 the database afterwards, so every run also validates bootstrap-from-zero.
