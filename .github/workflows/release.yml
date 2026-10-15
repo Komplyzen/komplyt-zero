@@ -1,0 +1,146 @@
+name: Release
+
+# Tag vX.Y.Z -> npm (@komplyzen/komplyt-zero, provenance) -> MCP Registry, and in
+# parallel a multi-arch image on ghcr.io/komplyzen/komplyt-zero.
+# No long-lived secrets: npm uses trusted publishing (OIDC) and the registry uses
+# GitHub OIDC. One-time setup, in this order:
+#   1. publish a throwaway first version by hand (docs in CONTRIBUTING.md, "Releasing")
+#   2. npmjs.com -> package -> Settings -> Trusted publisher: org Komplyzen, repo
+#      komplyt-zero, workflow release.yml
+#   3. later releases: bump version in src/package.json and server.json, merge, tag
+#      the merged commit, push the tag. Only maintainers can push v* tags (tag ruleset).
+# A pull request that touches the release files runs the same checks without
+# publishing anything.
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - server.json
+      - src/package.json
+      - src/tsconfig.build.json
+      - src/Dockerfile
+
+permissions: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing + MCP Registry OIDC
+    env:
+      RELEASING: ${{ github.ref_type == 'tag' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The tagged commit is on main
+        if: env.RELEASING == 'true'
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Trusted publishing needs npm 11.5.1 or newer
+        run: npm install -g npm@11.21.0
+      - name: package.json and server.json agree (and the tag, when releasing)
+        run: |
+          pkg=$(jq -r .version src/package.json)
+          srv=$(jq -r .version server.json)
+          pkgsrv=$(jq -r '.packages[0].version' server.json)
+          echo "package.json=$pkg server.json=$srv server.json package=$pkgsrv"
+          [ "$pkg" = "$srv" ] && [ "$pkg" = "$pkgsrv" ]
+          if [ "$RELEASING" = true ]; then
+            echo "tag=${GITHUB_REF_NAME#v}"
+            [ "${GITHUB_REF_NAME#v}" = "$pkg" ]
+          fi
+      - name: Install libsecret (keytar links it on Linux)
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-0
+      - name: Install, typecheck, test
+        working-directory: src
+        env:
+          EMBEDDING_PROVIDER: fixture
+        run: |
+          bun install --frozen-lockfile
+          bun run typecheck
+          bun run test:run
+      - name: Check the package contents (prepack builds without tests and adds LICENSE)
+        if: env.RELEASING != 'true'
+        working-directory: src
+        run: npm publish --dry-run
+      - name: Publish to npm (prepack builds without tests and adds LICENSE)
+        if: env.RELEASING == 'true'
+        working-directory: src
+        run: |
+          # A prerelease (1.0.0-rc.1) must not become the "latest" dist-tag.
+          case "$GITHUB_REF_NAME" in *-*) tag=next ;; *) tag=latest ;; esac
+          npm publish --tag "$tag"
+      - name: Install mcp-publisher (pinned, checksum verified)
+        if: env.RELEASING == 'true'
+        env:
+          MCP_PUBLISHER_VERSION: v1.8.1
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+        run: |
+          curl -fsSL -o mcp-publisher.tar.gz "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+      - name: Authenticate to the MCP Registry
+        if: env.RELEASING == 'true'
+        run: ./mcp-publisher login github-oidc
+      - name: Publish to the MCP Registry
+        if: env.RELEASING == 'true'
+        run: ./mcp-publisher publish
+
+  image:
+    # Built from src/Dockerfile (the same file docker-compose.yml builds), so the image
+    # contains ee/ under ELv2 like the compose build does. The first push creates the
+    # package as private: set it to public once under the org's Packages settings.
+    # On a pull request the image is built for amd64 only and not pushed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      RELEASING: ${{ github.ref_type == 'tag' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The tagged commit is on main
+        if: env.RELEASING == 'true'
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        if: env.RELEASING == 'true'
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        if: env.RELEASING == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ghcr.io/komplyzen/komplyt-zero
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
+            type=ref,event=pr
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ./src
+          platforms: ${{ env.RELEASING == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          push: ${{ env.RELEASING == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
