@@ -1,17 +1,30 @@
 version: 2
+# Dependabot PRs run the public CI only. The private integration run needs a secret that
+# Dependabot runs do not get, and should not: upstream content is unreviewed. A maintainer
+# reads the diff and comments `/ok-to-test <sha>` (see CONTRIBUTING.md, "Dependency updates").
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
     groups:
       actions:
         patterns: ['*']
   - package-ecosystem: docker
     directory: /src
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
+    ignore:
+      # Runtime and database majors are deliberate upgrades, not bot PRs.
+      - dependency-name: oven/bun
+        update-types: ['version-update:semver-major']
   - package-ecosystem: docker-compose
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: surrealdb/surrealdb
+        update-types: ['version-update:semver-major']

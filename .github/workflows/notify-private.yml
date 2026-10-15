@@ -16,8 +16,11 @@ permissions:
 
 jobs:
   dispatch:
-    # Same-repo only — forks use public CI only (no secrets)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Same-repo only — forks use public CI only (no secrets). Dependabot branches too: their
+    # content is unreviewed, so a maintainer starts the private run with /ok-to-test.
+    if: |
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      !startsWith(github.head_ref || github.ref_name, 'dependabot/')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
