@@ -33,7 +33,7 @@ services:
   # One-shot: creates the namespace/database and applies database/migrations/*.surql in order.
   # Skips everything when the baseline is already there (the baseline is not re-runnable).
   migrate:
-    image: curlimages/curl:8.10.1
+    image: curlimages/curl:8.22.0
     depends_on:
       surrealdb:
         condition: service_healthy
