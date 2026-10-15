@@ -41,7 +41,7 @@ const envSchema = z.object({
   KG_LOCAL_ALLOWED_HOSTS: z.string().transform(s => s.split(',').map(h => h.trim().toLowerCase()).filter(Boolean)).optional(),
 
   // MCP server identity
-  MCP_SERVER_NAME: z.string().default('komplyt-temporal-lobe'),
+  MCP_SERVER_NAME: z.string().default('komplyt-zero'),
 
   // Rate limiting
   TRUSTED_PROXY_CIDR: z.string().optional(),

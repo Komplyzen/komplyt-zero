@@ -296,7 +296,7 @@ Batch related lookups into a single `db.query()` call (multiple statements, one 
 | `CORS_ORIGINS` | unset | Comma-separated allowed origins |
 | `LISTEN_ADDR` | `0.0.0.0:3000` (`127.0.0.1:3000` in local auth mode when unset) | HTTP server bind address |
 | `KG_LOCAL_ALLOWED_HOSTS` | unset | Local auth mode: extra accepted `Host` values besides loopback |
-| `MCP_SERVER_NAME` | `komplyt-temporal-lobe` | MCP server identity string |
+| `MCP_SERVER_NAME` | `komplyt-zero` | MCP server identity string |
 | `TRUSTED_PROXY_CIDR` | unset | CIDR for trusted proxy (rate limiting) |
 | `PURGE_JOB_SECRET` | unset | Shared secret for `/admin/purge` (min 32 chars; absent = endpoint disabled) |
 | `KG_EMBED_FIXTURES` | `false` | Legacy alias for `EMBEDDING_PROVIDER=fixture`; combined with any other explicit `EMBEDDING_PROVIDER` it is a validation error |

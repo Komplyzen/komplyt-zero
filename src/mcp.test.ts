@@ -6,7 +6,7 @@ import type { ToolHandler } from './contracts.js';
 vi.mock('./env.js', () => ({
   env: {
     KG_PUBLIC_URL: 'https://kg.example.com',
-    MCP_SERVER_NAME: 'komplyt-temporal-lobe',
+    MCP_SERVER_NAME: 'komplyt-zero',
     TRUSTED_PROXY_CIDR: '10.0.0.0/8',
     KG_DB_URL: 'ws://localhost:8000',
     KG_DB_USER: 'root',
@@ -316,7 +316,7 @@ describe('MCP Protocol', () => {
       });
 
       const body = await res.json();
-      expect(body.result.serverInfo.name).toBe('komplyt-temporal-lobe');
+      expect(body.result.serverInfo.name).toBe('komplyt-zero');
     });
   });
 
