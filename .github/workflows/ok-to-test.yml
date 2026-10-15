@@ -3,7 +3,10 @@ name: /ok-to-test
 # Triggered when a maintainer comments `/ok-to-test <reviewed-sha>` on a fork PR or a
 # Dependabot PR. Both are untrusted: neither gets the private integration run automatically.
 # The sha pins what was reviewed; a push after review invalidates the comment.
-# This dispatches integration tests to run in the private repo.
+# The approval re-uses the normal pipeline: it sends the same `kg-integration` event as
+# notify-private.yml, with the reviewed commit. The private kg-ci checks out exactly that
+# SHA (a later push cannot change what runs), provisions the run-scoped database and reports
+# `integration-tests` on it.
 
 on:
   issue_comment:
@@ -71,6 +74,9 @@ jobs:
 
             core.setOutput('sha', head);
             core.setOutput('number', pr.data.number);
+            // Only names the run (concurrency group). Fork branches do not exist here, so they
+            // get a synthetic name; kg-ci checks out the sha, not the ref.
+            core.setOutput('ref', sameRepo ? pr.data.head.ref : `ok-to-test/pr-${pr.data.number}`);
             console.log(`${dependabot ? 'Dependabot' : 'Fork'} PR #${pr.data.number} from ${pr.data.head.repo.full_name}`);
 
       - name: React to comment
@@ -85,14 +91,29 @@ jobs:
               content: 'rocket'
             });
 
+      - name: Post pending status
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ steps.pr.outputs.sha }}',
+              state: 'pending',
+              context: 'integration-tests',
+              description: 'Integration tests queued (approved with /ok-to-test)...'
+            });
+
       - name: Dispatch to private repo
         uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 # v3
         with:
           token: ${{ steps.app-token.outputs.token }}
           repository: Komplyzen/komplyzen-platform
-          event-type: kg-ok-to-test
+          event-type: kg-integration
           client-payload: |
             {
-              "pr": "${{ steps.pr.outputs.number }}",
-              "sha": "${{ steps.pr.outputs.sha }}"
+              "ref": ${{ toJSON(steps.pr.outputs.ref) }},
+              "sha": "${{ steps.pr.outputs.sha }}",
+              "pr": "${{ steps.pr.outputs.number }}"
             }
