@@ -1,0 +1,90 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Komplyzen/komplyt-zero",
+  "title": "Komplyt Zero",
+  "description": "Persistent working memory for AI agents: a knowledge graph with semantic search and decay.",
+  "repository": {
+    "url": "https://github.com/Komplyzen/komplyt-zero",
+    "source": "github",
+    "subfolder": "src"
+  },
+  "websiteUrl": "https://github.com/Komplyzen/komplyt-zero",
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://kg.kompl.yt/mcp"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@komplyzen/komplyt-zero",
+      "version": "1.0.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "KG_AUTH_MODE",
+          "description": "Self-hosted use: one fixed local user, no login.",
+          "value": "local",
+          "isRequired": true
+        },
+        {
+          "name": "KG_DB_URL",
+          "description": "SurrealDB WebSocket URL, e.g. ws://127.0.0.1:8000. See docs/self-hosting.md for a compose file that starts SurrealDB.",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "KG_DB_USER",
+          "description": "SurrealDB username.",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "KG_DB_PASS",
+          "description": "SurrealDB password.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "KG_JWT_SECRET",
+          "description": "Server secret for the kg_server SurrealDB signin, at least 32 characters.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "EMBEDDING_PROVIDER",
+          "description": "cohere or ollama. One per install.",
+          "default": "ollama",
+          "choices": ["ollama", "cohere"],
+          "isRequired": false
+        },
+        {
+          "name": "EMBEDDING_BASE_URL",
+          "description": "Ollama base URL, e.g. http://127.0.0.1:11434 (required for ollama).",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "EMBEDDING_API_KEY",
+          "description": "API key when the provider needs one (cohere).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

@@ -59,6 +59,12 @@ CI runs type checking, unit tests and a dependency audit on every pull request, 
 
 Dependabot opens at most two pull requests per ecosystem a month (GitHub Actions, Docker, Compose). Its pull requests run the public CI only. The private integration run needs a secret that Dependabot runs do not receive, and it should not: a new base image, action or package is unreviewed upstream content that would run next to the staging database. So `integration-tests` stays pending, and merging is blocked, until a maintainer has read the diff and comments `/ok-to-test <sha>` with the commit they reviewed. A push after that invalidates the approval, as for forks. Major versions of `oven/bun` and `surrealdb/surrealdb` are ignored: those upgrades are deliberate.
 
+### Releasing (maintainers)
+
+A release is a `v*` tag. `.github/workflows/release.yml` then publishes `@komplyzen/komplyt-zero` to npm (trusted publishing, no token, with provenance), the server entry to the MCP Registry, and a multi-arch image to `ghcr.io/komplyzen/komplyt-zero`. To release: bump `version` in `src/package.json` and, in three places, `server.json` (`version` and `packages[0].version`), merge that through a normal pull request, then tag the merged commit. The workflow refuses a tag that disagrees with those files or is not on `main`, and a prerelease tag (`v1.1.0-rc.1`) goes to the `next` npm tag and does not move the image's `latest`. Only maintainers can push `v*` tags. A pull request that touches the release files runs the same checks, including `npm publish --dry-run` and an unpushed image build.
+
+First-time setup, once: publish a throwaway version by hand (`cd src && npm pkg set version=0.0.1 && npm publish --access public --tag bootstrap`, then `git checkout package.json`), add the trusted publisher on npmjs.com (organisation `Komplyzen`, repository `komplyt-zero`, workflow `release.yml`), and set the `komplyt-zero` package on ghcr.io to public after the first image push.
+
 [CLAUDE.md](CLAUDE.md) describes the architecture and the coding conventions in more detail. It is written for AI coding agents, and it is just as useful for people.
 
 ## Where code goes

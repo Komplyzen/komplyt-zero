@@ -1,5 +1,6 @@
 {
-  "name": "komplyt-zero",
+  "name": "@komplyzen/komplyt-zero",
+  "mcpName": "io.github.Komplyzen/komplyt-zero",
   "version": "1.0.0",
   "description": "Persistent working memory for AI agents. Knowledge graph with semantic search and spreading activation.",
   "type": "module",
@@ -7,6 +8,18 @@
     "kg": "dist/bin/kg.js"
   },
   "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "!dist/ee",
+    "!dist/bin/bench-token.*",
+    "!dist/benchmarks",
+    "public",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Komplyzen/komplyt-zero.git"
@@ -38,7 +51,10 @@
     "bench:drift": "tsx benchmarks/runner.ts drift",
     "bench:perf": "tsx benchmarks/runner.ts perf",
     "bench:baseline": "tsx benchmarks/runner.ts --save-baseline",
-    "bench:smoke": "tsx benchmarks/smoke.ts"
+    "bench:smoke": "tsx benchmarks/smoke.ts",
+    "build:package": "tsc -p tsconfig.build.json",
+    "prepack": "rm -rf dist && tsc -p tsconfig.build.json && cp ../LICENSE LICENSE",
+    "postpack": "rm -f LICENSE"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.5.1",
