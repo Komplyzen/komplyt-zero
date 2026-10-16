@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Elastic-2.0
-// Copyright 2024-2026 Komplyzen GmbH. Licensed under the Elastic License 2.0; see LICENSE in this directory.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-Komplyzen-Commercial
+// Copyright 2024-2026 Komplyzen GmbH. Licensed under the PolyForm Noncommercial License 1.0.0 or a commercial licence from Komplyzen; see LICENSE in this directory.
 
 /**
  * Admin-initiated container soft-delete.

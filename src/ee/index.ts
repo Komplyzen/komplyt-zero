@@ -1,15 +1,13 @@
-// SPDX-License-Identifier: Elastic-2.0
-// Copyright 2024-2026 Komplyzen GmbH. Licensed under the Elastic License 2.0; see LICENSE in this directory.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-Komplyzen-Commercial
+// Copyright 2024-2026 Komplyzen GmbH. Licensed under the PolyForm Noncommercial License 1.0.0 or a commercial licence from Komplyzen; see LICENSE in this directory.
 
 /**
  * Enterprise Edition entry point.
  *
- * License: Elastic License 2.0 (ELv2) - see LICENSE in this directory.
- *
- * You may use, copy, distribute, modify and self-host this code. ELv2 does
- * not allow providing it to third parties as a hosted or managed service that
- * gives them a substantial set of its features, circumventing licence keys, or
- * removing licensing notices. See LICENSE for the full terms.
+ * License: PolyForm Noncommercial 1.0.0 (see LICENSE in this directory), or a
+ * commercial licence from Komplyzen GmbH (hello@kompl.yt). Use for
+ * noncommercial purposes, as that licence defines them, is free; any other use
+ * needs the commercial licence. The rest of the repository is Apache-2.0.
  */
 
 // Re-export enterprise features

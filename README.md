@@ -1,15 +1,15 @@
 # Komplyt Zero
 
-An open-source memory graph for your AI tools. Run it yourself, or use ours in the EU.
+An open-core memory graph for your AI tools. Run it yourself, or use ours in the EU.
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0%20core%20%C2%B7%20PolyForm%20NC%20ee-blue.svg)](LICENSING.md)
 [![CI](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml/badge.svg)](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml)
 
 Agents lose the reasoning behind a decision when the session ends, and each client keeps separate notes. Zero is an MCP server that gives Claude, ChatGPT, Cursor and any other MCP client one shared memory. Agents record decisions, problems and approaches together with the reason, as typed nodes in a graph. A later session, in any client, finds them by meaning instead of keyword, so the reasoning behind last month's choice is there when someone is about to undo it. It is for developers who use several AI clients on the same product, and for teams that keep re-deciding things because nobody remembers why.
 
 A notes file grows until nobody reads it, and a plain vector store returns the closest text with nothing around it. Zero keeps the reason with each decision, links related nodes so a hit brings its context along, and lets knowledge nobody uses drop down the ranking. Nothing is deleted. It stores what the agent was asked to keep, not your chats.
 
-The engine is Apache-2.0. The team features in `src/ee/` are source-available under the Elastic License 2.0, and Zero runs on SurrealDB (Business Source License), so the stack as a whole is not OSI open source. Details are in [Licence](#licence).
+The core is Apache-2.0. The team features in `src/ee/` are source-available: free for noncommercial use under PolyForm Noncommercial, with a commercial licence for everything else. Zero also runs on SurrealDB (Business Source License), so the repository as a whole is not OSI open source. Details are in [Licence](#licence).
 
 To try the hosted service (free for one person, data stored in Frankfurt), add it to Claude Code and run `/mcp` to sign in. To run it on your own machine, see [Getting started](#getting-started).
 
@@ -140,7 +140,7 @@ The variables you need for a first run are below; `src/.env.example` lists the r
 | `EMBEDDING_MODEL` | No | Provider model (default from the registry; `OLLAMA_MODEL` is accepted for ollama) |
 | `LISTEN_ADDR` | No | Bind address (default `0.0.0.0:3000`; `127.0.0.1:3000` in local mode when unset) |
 
-## Open source and the hosted product
+## Open core and the hosted product
 
 This repository is the engine. In local auth mode, or once it has an OIDC issuer to trust, it is a complete memory for one person, which you run yourself, record into and query from any MCP client.
 
@@ -148,9 +148,9 @@ Working as a team is the paid part. The engine enforces who may read which conta
 
 ## Licence
 
-The engine is licensed under [Apache-2.0](LICENSE) (see [LICENSING.md](LICENSING.md) for the split). The code in `src/ee/` (OAuth discovery metadata for connector directories, the REST API for managing shared containers, and the admin and purge routes) is not part of the Apache-2.0 engine and is not covered by that licence. It is source-available under the [Elastic License 2.0](src/ee/LICENSE), and only those terms apply to it, although the Docker image contains it. The server runs without `src/ee/`; it then logs that it is the open-source edition and leaves those routes out.
+The engine is licensed under [Apache-2.0](LICENSE) (see [LICENSING.md](LICENSING.md) for the split). The code in `src/ee/` (OAuth discovery metadata for connector directories, the REST API for managing shared containers, and the admin and purge routes) is not part of the Apache-2.0 engine and is not covered by that licence. It is source-available under the [PolyForm Noncommercial License 1.0.0](src/ee/LICENSE), which allows noncommercial use only, and Komplyzen offers it under a commercial licence as well (hello@kompl.yt). Only those terms apply to it, although the Docker image contains it. The server runs without `src/ee/`; it then logs that it is the open-source edition and leaves those routes out.
 
-Zero stores its data in [SurrealDB](https://surrealdb.com), which is licensed under the Business Source License 1.1. Self-hosting SurrealDB for your own use is permitted under that licence, but because of it the stack as a whole is not OSI open source, and we don't describe it as such.
+Zero stores its data in [SurrealDB](https://surrealdb.com), which is licensed under the Business Source License 1.1. Self-hosting SurrealDB for your own use is permitted under that licence, but that licence, like the one on `src/ee/`, is not OSI open source, so we call Zero open core and don't describe the repository as open source.
 
 ## Contributing and security
 

@@ -148,7 +148,7 @@ jobs:
       - name: Audit dependencies
         run: bun audit
 
-  # The open-source edition has no src/ee/ (ELv2 code): it must still typecheck, lint and pass its
+  # The open-source edition has no src/ee/ (source-available code): it must still typecheck, lint and pass its
   # tests without it.
   ee-absent:
     runs-on: ubuntu-latest
