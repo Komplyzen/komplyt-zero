@@ -95,7 +95,7 @@ Tokens expire, so for daily use put the server behind something that refreshes t
 
 ## Running without `src/ee/`
 
-The code in `src/ee/` is under the Elastic License 2.0 (see the [README](../README.md#licence)). If you remove the folder, the server logs that it is running the open-source edition and leaves out the OAuth discovery endpoints, the container management API under `/api/v1/containers` and the admin routes. All MCP tools and the rest of the REST API keep working. Set `KG_REQUIRE_EE=true` if you want a missing `src/ee/` to stop the server instead.
+The code in `src/ee/` is under the PolyForm Noncommercial License 1.0.0, or a commercial licence from Komplyzen (see the [README](../README.md#licence)). If you remove the folder, the server logs that it is running the open-source edition and leaves out the OAuth discovery endpoints, the container management API under `/api/v1/containers` and the admin routes. All MCP tools and the rest of the REST API keep working. Set `KG_REQUIRE_EE=true` if you want a missing `src/ee/` to stop the server instead.
 
 `src/Dockerfile` copies `src/ee/`, so a container build without it needs that line removed.
 

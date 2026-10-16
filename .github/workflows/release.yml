@@ -101,7 +101,7 @@ jobs:
 
   image:
     # Built from src/Dockerfile (the same file docker-compose.yml builds), so the image
-    # contains ee/ under ELv2 like the compose build does. The first push creates the
+    # contains ee/ under its own licence like the compose build does. The first push creates the
     # package as private: set it to public once under the org's Packages settings.
     # On a pull request the image is built for amd64 only and not pushed.
     runs-on: ubuntu-latest

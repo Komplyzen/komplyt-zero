@@ -27,6 +27,11 @@ COPY --from=builder /app/package.json ./dist/
 
 COPY --from=builder /app/public ./dist/public
 
+# Licence texts for what the image contains: the core is Apache-2.0, ee/ has its own terms.
+COPY licenses /licenses
+COPY --from=builder /app/ee/LICENSE /licenses/ee-LICENSE
+LABEL org.opencontainers.image.licenses="Apache-2.0 AND (PolyForm-Noncommercial-1.0.0 OR LicenseRef-Komplyzen-Commercial)"
+
 ENV NODE_ENV=production
 EXPOSE 3000
 

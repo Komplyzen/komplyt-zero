@@ -4,7 +4,7 @@ The tools are simple enough that an agent can call them without any instructions
 
 ## The model in one paragraph
 
-A node is a piece of text with a type, a status, a project, optional tags and an embedding. Edges connect nodes and get stronger each time they are reinforced. A session belongs to a project, and starting one lowers the decay score of every node in that project by 15 %. Querying a node raises its score slightly, updating it raises it more, and new nodes start at full strength. Search ranks by meaning first (70 %) and recency of use second (30 %), then follows edges to bring in neighbours. Everything below follows from those mechanics.
+A node is a piece of text with a type, a status, a project, optional tags and an embedding. Edges connect nodes and get stronger each time they are reinforced. A session belongs to a project, and starting one multiplies the decay score of every node in that project by 0.85, so scores fall off exponentially. Querying a node lifts its score a little toward a ceiling of 0.85, updating it lifts it more, and new nodes start at 1.0. Search ranks by meaning first (70 %) and recency of use second (30 %), then follows edges to bring in neighbours. Everything below follows from those mechanics.
 
 ## What to record
 
@@ -27,7 +27,7 @@ Write the content so it stands on its own. The content is the only part that get
 
 **Start every session in the right project.** Decay, inheritance and filtering all key on `project`. A node created without a project takes the session's project, and working in project A never decays the nodes of project B. Omitting `project` from queries searches the whole tenant, which is sometimes what you want and often the reason an answer from an unrelated project turns up first.
 
-**Re-activate what you relied on.** Calling `kg_node_update` with only an `id` changes nothing in the node but resets its decay. Without that, a node loses 15 % per session in its project and drops out of the top results after a few dozen sessions, however important it is. The end-of-session routine below does this systematically.
+**Re-activate what you relied on.** Calling `kg_node_update` with only an `id` changes nothing in the node but lifts its decay score back toward the 0.85 ceiling. Without that, a node keeps only 85 % of its score each session in its project and drops out of the top results after a few dozen sessions, however important it is. The end-of-session routine below does this systematically.
 
 **Relate nodes when you see a connection.** Edges are what spreading activation follows, and nodes in a dense neighbourhood get a larger boost when they are used. Edges carry no type, so if the nature of the link matters ("this replaces that", "this was caused by that"), say so in the content of one of the nodes.
 

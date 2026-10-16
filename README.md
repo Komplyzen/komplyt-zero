@@ -1,14 +1,22 @@
 # Komplyt Zero
 
-An open-source memory graph for your AI tools. Run it yourself, or use ours in the EU.
+An open-core memory graph for your AI tools. Run it yourself, or use ours in the EU.
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0%20core%20%C2%B7%20PolyForm%20NC%20ee-blue.svg)](LICENSING.md)
 [![CI](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml/badge.svg)](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/badge/chat-Discord-5865F2.svg)](https://discord.gg/4scu8m3xXg)
 
-Zero is an MCP server that gives Claude, ChatGPT, Cursor and any other MCP client one memory they share. Your agents write down what was decided, found or tried, together with the reason, as typed nodes in a graph. A later session, in the same tool or a different one, finds those nodes by meaning instead of by keyword, so the reasoning behind last month's choice is there when someone is about to undo it.
+Agents lose the reasoning behind a decision when the session ends, and each client keeps separate notes. Zero is an MCP server that gives Claude, ChatGPT, Cursor and any other MCP client one shared memory. Agents record decisions, problems and approaches together with the reason, as typed nodes in a graph. A later session, in any client, finds them by meaning instead of keyword, so the reasoning behind last month's choice is there when someone is about to undo it. It is for developers who use several AI clients on the same product, and for teams that keep re-deciding things because nobody remembers why.
 
-Zero does not store your chats. It stores what the agent was asked to keep, which in practice means decisions, problems, observations and approaches, each with the reason that makes it worth keeping.
+A notes file grows until nobody reads it, and a plain vector store returns the closest text with nothing around it. Zero keeps the reason with each decision, links related nodes so a hit brings its context along, and lets knowledge nobody uses drop down the ranking. Nothing is deleted. It stores what the agent was asked to keep, not your chats.
+
+The core is Apache-2.0. The team features in `src/ee/` are source-available: free for noncommercial use under PolyForm Noncommercial, with a commercial licence for everything else. Zero also runs on SurrealDB (Business Source License), so the repository as a whole is not OSI open source. Details are in [Licence](#licence).
+
+To try the hosted service (free for one person, data stored in Frankfurt), add it to Claude Code and run `/mcp` to sign in. To run it on your own machine, see [Getting started](#getting-started).
+
+```bash
+claude mcp add --transport http komplyt-zero https://kg.kompl.yt/mcp
+```
 
 ## What it looks like
 
@@ -35,27 +43,23 @@ Three weeks later, in a different client, someone asks a question that shares no
 }
 ```
 
-The decision comes back first. Spreading activation also returns the nodes linked to it, such as the open problem about retry storms that someone related to it last week, so the agent sees the decision in its context rather than as an isolated fact.
+The decision comes back first. Spreading activation also returns the nodes linked to it, such as the open problem about retry storms that someone related to it last week.
 
 ## How it ranks what comes back
 
 Every node carries an embedding and a decay score. A query ranks candidates by `0.7 × cosine similarity + 0.3 × decay score`, then follows the graph's edges for up to three hops (two by default) to pull in related nodes, each hop weakening the signal by half.
 
-The decay score is how the graph forgets. Each time a session starts in a project, every node in that project loses 15 % of its score. Nodes that agents query or update get some of it back, more when they sit in a dense neighbourhood. Knowledge that keeps being used stays near the top, and knowledge nobody touches fades without anyone having to curate it. Decay never deletes anything; a faded node still turns up when a query matches it closely enough.
+The decay score is how the graph forgets. Each time a session starts in a project, every node in that project keeps 85 % of its score, so scores fall off exponentially. Nodes that agents update climb back toward a ceiling of 0.85, by more when they sit in a dense neighbourhood, and a query gives a smaller lift. Knowledge that keeps being used stays near the top, and knowledge nobody touches fades without anyone having to curate it. Decay never deletes anything; a faded node still turns up when a query matches it closely enough.
 
 The graph, the decay and the spreading activation are all in this repository under Apache-2.0. The hosted service runs the same ranking code.
 
 ## Getting started
 
-**Use the hosted service.** This is the fastest route and needs no infrastructure. Add `https://kg.kompl.yt/mcp` as a custom connector in Claude or ChatGPT, or in Claude Code:
+**Use the hosted service.** This is the fastest route and needs no infrastructure. Add `https://kg.kompl.yt/mcp` as a custom connector in Claude or ChatGPT, or in Claude Code (the command is at the top of this page).
 
-```bash
-claude mcp add --transport http komplyt-zero https://kg.kompl.yt/mcp
-```
+In Claude Code, run `/mcp` afterwards to sign in. Data is stored in Frankfurt. Step-by-step instructions for each client are in [docs/connectors.md](docs/connectors.md).
 
-Then run `/mcp` inside Claude Code to sign in. Data is stored in Frankfurt. Step-by-step instructions for each client are in [docs/connectors.md](docs/connectors.md).
-
-**Run it yourself, with Docker.** The quickest route is the compose file: SurrealDB, Ollama embeddings and the server in one command. It needs Docker with the Compose plugin (`docker compose version` should print a version; on Debian the `docker.io` package does not include it, install `docker-compose` (Ubuntu: `docker-compose-v2`) or use Docker's own packages).
+**Run it yourself, with Docker.** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It needs Docker with the Compose plugin: `docker compose version` should print a version. Debian's `docker.io` package lacks it, so install `docker-compose` (Ubuntu: `docker-compose-v2`) or Docker's own packages.
 
 ```bash
 git clone https://github.com/Komplyzen/komplyt-zero.git
@@ -64,7 +68,7 @@ KG_JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
 claude mcp add --transport http zero http://localhost:3000/mcp
 ```
 
-The first start downloads the embedding model (`bge-m3`, roughly 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, every request is one fixed user in one fixed tenant, and the first use creates a default container called "Company Knowledge". That is built for one person on one machine, so the compose file publishes the port on `127.0.0.1` only. Do not publish it further, or put a proxy in front of it, unless something in front authenticates callers.
+The first start downloads the embedding model (`bge-m3`, about 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't publish the port beyond localhost, or put a proxy in front of it, unless the proxy authenticates callers.
 
 **Run it yourself, without Docker for the server.** Zero needs [Bun](https://bun.sh), a SurrealDB instance and an embedding provider:
 
@@ -79,13 +83,15 @@ cp .env.example .env             # fill in the values. For single-user use: set 
 bun index.ts
 ```
 
-There are two ways to handle identity. With `KG_AUTH_MODE=local` you need no identity provider. The server also listens on `127.0.0.1:3000` unless you set `LISTEN_ADDR`, and it rejects browser requests from other origins, other `Host` values (`KG_LOCAL_ALLOWED_HOSTS` adds some) and non-JSON bodies. For a team or a public deployment, leave the mode at its default: the server then accepts bearer JWTs from an OIDC issuer you point it at, and every token needs a `tenantId` claim, which is what scopes each query to one tenant. Keycloak, Zitadel, Authentik or any other issuer that publishes a JWKS and lets you add a custom claim will do. The two modes cannot be combined: local mode refuses to start when `KOMPLYT_JWKS_URL` or `KOMPLYT_ISSUER` is set. [docs/self-hosting.md](docs/self-hosting.md) walks through the whole setup, including the claims the server expects.
+In local mode (`KG_AUTH_MODE=local`) you need no identity provider: the server listens on `127.0.0.1:3000` unless you set `LISTEN_ADDR`, and rejects browser requests from other origins, other `Host` values (`KG_LOCAL_ALLOWED_HOSTS` adds some) and non-JSON bodies.
 
-**Use it from npm, as a stdio server.** If you already run SurrealDB and an embedding provider, `npx @komplyzen/komplyt-zero mcp` starts Zero as a stdio MCP server for your client. It reads the same `KG_DB_*` and `EMBEDDING_*` settings as above, and `KG_AUTH_MODE=local` skips the login. On Linux it needs `libsecret` installed (Debian and Ubuntu: `sudo apt install libsecret-1-0`), because the credential store it links against is a native module; without it the command fails at start with `ERR_DLOPEN_FAILED`. For a first try, the Docker route above is simpler, since it brings SurrealDB and Ollama along.
+For a team or a public deployment, keep the default mode: the server accepts bearer JWTs from an OIDC issuer you point it at (Keycloak, Zitadel, Authentik, or anything that publishes a JWKS and can add a custom claim), and every token needs a `tenantId` claim, which scopes each query to one tenant. The modes can't be combined: local mode refuses to start when `KOMPLYT_JWKS_URL` or `KOMPLYT_ISSUER` is set. [docs/self-hosting.md](docs/self-hosting.md) covers the full setup and the claims the server expects.
+
+**Use it from npm, as a stdio server.** With your own SurrealDB and embedding provider, `npx @komplyzen/komplyt-zero mcp` starts Zero as a stdio MCP server for your client. It reads the same `KG_DB_*` and `EMBEDDING_*` settings, and `KG_AUTH_MODE=local` skips the login. On Linux it needs `libsecret` (Debian and Ubuntu: `sudo apt install libsecret-1-0`), because its credential store is a native module; without it the command fails at start with `ERR_DLOPEN_FAILED`. For a first try, Docker is simpler, since it brings SurrealDB and Ollama along.
 
 ## Using it well
 
-The server tells every client how to use it, but a few habits make the difference between a graph that answers questions and a pile of notes. Query before you record, because the server does not deduplicate. Put the reason in the content, since the content is the only thing that gets embedded. Start each session with the right `project`, because decay and filtering both key on it. At the end of a session, re-activate the nodes you relied on so they stay findable.
+The server tells every client how to use it, but a few habits separate a graph that answers questions from a pile of notes. Query before you record, because the server doesn't deduplicate. Put the reason in the content, since only the content is embedded. Start each session with the right `project`, because decay and filtering key on it. At the end, re-activate the nodes you relied on so they stay findable.
 
 [docs/using-zero.md](docs/using-zero.md) collects what we learned running Zero on our own work since early 2026: what to record and what to leave out, how to replace a decision without losing its history, which queries retrieve badly, and the end-of-session routine we use. Ready-to-copy agent instructions and a session-close skill are in [examples/](examples/).
 
@@ -135,7 +141,7 @@ The variables you need for a first run are below; `src/.env.example` lists the r
 | `EMBEDDING_MODEL` | No | Provider model (default from the registry; `OLLAMA_MODEL` is accepted for ollama) |
 | `LISTEN_ADDR` | No | Bind address (default `0.0.0.0:3000`; `127.0.0.1:3000` in local mode when unset) |
 
-## Open source and the hosted product
+## Open core and the hosted product
 
 This repository is the engine. In local auth mode, or once it has an OIDC issuer to trust, it is a complete memory for one person, which you run yourself, record into and query from any MCP client.
 
@@ -143,9 +149,9 @@ Working as a team is the paid part. The engine enforces who may read which conta
 
 ## Licence
 
-The engine is licensed under [Apache-2.0](LICENSE) (see [LICENSING.md](LICENSING.md) for the split). The code in `src/ee/` (OAuth discovery metadata for connector directories, the REST API for managing shared containers, and the admin and purge routes) is source-available under the [Elastic License 2.0](src/ee/LICENSE), which lets you use, modify and self-host it for your own organisation (there is no licence key) but forbids offering it to others as a hosted or managed service. The server runs without `src/ee/`; it then logs that it is the open-source edition and leaves those routes out.
+The engine is licensed under [Apache-2.0](LICENSE) (see [LICENSING.md](LICENSING.md) for the split). The code in `src/ee/` (OAuth discovery metadata for connector directories, the REST API for managing shared containers, and the admin and purge routes) is not part of the Apache-2.0 engine and is not covered by that licence. It is source-available under the [PolyForm Noncommercial License 1.0.0](src/ee/LICENSE), which allows noncommercial use only, and Komplyzen offers it under a commercial licence as well (hello@kompl.yt). Only those terms apply to it, although the Docker image contains it. The server runs without `src/ee/`; it then logs that it is the open-source edition and leaves those routes out.
 
-Zero stores its data in [SurrealDB](https://surrealdb.com), which is licensed under the Business Source License 1.1. Self-hosting SurrealDB for your own use is permitted under that licence, but because of it the stack as a whole is not OSI open source, and we don't describe it as such.
+Zero stores its data in [SurrealDB](https://surrealdb.com), which is licensed under the Business Source License 1.1. Self-hosting SurrealDB for your own use is permitted under that licence, but that licence, like the one on `src/ee/`, is not OSI open source, so we call Zero open core and don't describe the repository as open source.
 
 ## Contributing and security
 
