@@ -4,6 +4,7 @@ An open-source memory graph for your AI tools. Run it yourself, or use ours in t
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![CI](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml/badge.svg)](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml)
+[![Discord](https://img.shields.io/badge/chat-Discord-5865F2.svg)](https://discord.gg/y2X32ddCc)
 
 Zero is an MCP server that gives Claude, ChatGPT, Cursor and any other MCP client one memory they share. Your agents write down what was decided, found or tried, together with the reason, as typed nodes in a graph. A later session, in the same tool or a different one, finds those nodes by meaning instead of by keyword, so the reasoning behind last month's choice is there when someone is about to undo it.
 
@@ -148,6 +149,6 @@ Zero stores its data in [SurrealDB](https://surrealdb.com), which is licensed un
 
 ## Contributing and security
 
-Contributions are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the test database and what a pull request needs. Report vulnerabilities privately to security@kompl.yt, as described in [SECURITY.md](SECURITY.md).
+Contributions are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the test database and what a pull request needs. Report vulnerabilities privately to security@kompl.yt, as described in [SECURITY.md](SECURITY.md). For questions and a chat with the people building it, join us on [Discord](https://discord.gg/y2X32ddCc).
 
 Zero is built by [Komplyzen GmbH](https://kompl.yt) in Berlin.
