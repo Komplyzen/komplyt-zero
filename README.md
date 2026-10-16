@@ -5,11 +5,13 @@ An open-source memory graph for your AI tools. Run it yourself, or use ours in t
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![CI](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml/badge.svg)](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml)
 
-Agents forget why a decision was made the moment a session ends, and every client keeps its own notes. Zero is an MCP server that gives Claude, ChatGPT, Cursor and any other MCP client one shared memory. Agents record decisions, problems and approaches together with the reason, as typed nodes in a graph. A later session, in any client, finds them by meaning instead of keyword, so the reasoning behind last month's choice is there when someone is about to undo it.
+Agents lose the reasoning behind a decision when the session ends, and each client keeps separate notes. Zero is an MCP server that gives Claude, ChatGPT, Cursor and any other MCP client one shared memory. Agents record decisions, problems and approaches together with the reason, as typed nodes in a graph. A later session, in any client, finds them by meaning instead of keyword, so the reasoning behind last month's choice is there when someone is about to undo it. It is for developers who use several AI clients on the same product, and for teams that keep re-deciding things because nobody remembers why.
 
-Zero stores what the agent was asked to keep, not your chats. Knowledge nobody uses fades on its own, and the engine behind all of it is in this repository under Apache-2.0.
+A notes file grows until nobody reads it, and a plain vector store returns the closest text with nothing around it. Zero keeps the reason with each decision, links related nodes so a hit brings its context along, and lets knowledge nobody uses drop down the ranking. Nothing is deleted. It stores what the agent was asked to keep, not your chats.
 
-To try it, add the hosted service (free for one person, data stored in Frankfurt) to Claude Code, or [run it yourself](#getting-started):
+The engine is Apache-2.0. The team features in `src/ee/` are source-available under the Elastic License 2.0, and Zero runs on SurrealDB (Business Source License), so the stack as a whole is not OSI open source. Details are in [Licence](#licence).
+
+To try the hosted service (free for one person, data stored in Frankfurt), add it to Claude Code and run `/mcp` to sign in. To run it on your own machine, see [Getting started](#getting-started).
 
 ```bash
 claude mcp add --transport http komplyt-zero https://kg.kompl.yt/mcp
@@ -40,7 +42,7 @@ Three weeks later, in a different client, someone asks a question that shares no
 }
 ```
 
-The decision comes back first. Spreading activation also returns the nodes linked to it, such as the open problem about retry storms that someone related to it last week, so the agent sees the decision in its context rather than as an isolated fact.
+The decision comes back first. Spreading activation also returns the nodes linked to it, such as the open problem about retry storms that someone related to it last week.
 
 ## How it ranks what comes back
 
@@ -52,13 +54,9 @@ The graph, the decay and the spreading activation are all in this repository und
 
 ## Getting started
 
-**Use the hosted service.** This is the fastest route and needs no infrastructure. Add `https://kg.kompl.yt/mcp` as a custom connector in Claude or ChatGPT, or in Claude Code:
+**Use the hosted service.** This is the fastest route and needs no infrastructure. Add `https://kg.kompl.yt/mcp` as a custom connector in Claude or ChatGPT, or in Claude Code (the command is at the top of this page).
 
-```bash
-claude mcp add --transport http komplyt-zero https://kg.kompl.yt/mcp
-```
-
-Then run `/mcp` inside Claude Code to sign in. Data is stored in Frankfurt. Step-by-step instructions for each client are in [docs/connectors.md](docs/connectors.md).
+In Claude Code, run `/mcp` afterwards to sign in. Data is stored in Frankfurt. Step-by-step instructions for each client are in [docs/connectors.md](docs/connectors.md).
 
 **Run it yourself, with Docker.** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It needs Docker with the Compose plugin: `docker compose version` should print a version. Debian's `docker.io` package lacks it, so install `docker-compose` (Ubuntu: `docker-compose-v2`) or Docker's own packages.
 
@@ -69,7 +67,7 @@ KG_JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
 claude mcp add --transport http zero http://localhost:3000/mcp
 ```
 
-The first start downloads the embedding model (`bge-m3`, about 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't expose it further, or put a proxy in front, unless something there authenticates callers.
+The first start downloads the embedding model (`bge-m3`, about 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't publish the port beyond localhost, or put a proxy in front of it, unless the proxy authenticates callers.
 
 **Run it yourself, without Docker for the server.** Zero needs [Bun](https://bun.sh), a SurrealDB instance and an embedding provider:
 
@@ -84,9 +82,11 @@ cp .env.example .env             # fill in the values. For single-user use: set 
 bun index.ts
 ```
 
-Identity has two modes. `KG_AUTH_MODE=local` needs no identity provider: the server listens on `127.0.0.1:3000` unless you set `LISTEN_ADDR`, and rejects browser requests from other origins, other `Host` values (`KG_LOCAL_ALLOWED_HOSTS` adds some) and non-JSON bodies. For a team or a public deployment, keep the default mode: the server accepts bearer JWTs from an OIDC issuer you point it at (Keycloak, Zitadel, Authentik, or anything that publishes a JWKS and can add a custom claim), and every token needs a `tenantId` claim, which scopes each query to one tenant. The modes can't be combined: local mode refuses to start when `KOMPLYT_JWKS_URL` or `KOMPLYT_ISSUER` is set. [docs/self-hosting.md](docs/self-hosting.md) covers the full setup and the claims the server expects.
+In local mode (`KG_AUTH_MODE=local`) you need no identity provider: the server listens on `127.0.0.1:3000` unless you set `LISTEN_ADDR`, and rejects browser requests from other origins, other `Host` values (`KG_LOCAL_ALLOWED_HOSTS` adds some) and non-JSON bodies.
 
-**Use it from npm, as a stdio server.** With your own SurrealDB and embedding provider, `npx @komplyzen/komplyt-zero mcp` starts Zero as a stdio MCP server for your client. It reads the same `KG_DB_*` and `EMBEDDING_*` settings, and `KG_AUTH_MODE=local` skips the login. On Linux it needs `libsecret` (Debian and Ubuntu: `sudo apt install libsecret-1-0`), because its credential store is a native module; without it the command fails at start with `ERR_DLOPEN_FAILED`. For a first try, Docker is simpler.
+For a team or a public deployment, keep the default mode: the server accepts bearer JWTs from an OIDC issuer you point it at (Keycloak, Zitadel, Authentik, or anything that publishes a JWKS and can add a custom claim), and every token needs a `tenantId` claim, which scopes each query to one tenant. The modes can't be combined: local mode refuses to start when `KOMPLYT_JWKS_URL` or `KOMPLYT_ISSUER` is set. [docs/self-hosting.md](docs/self-hosting.md) covers the full setup and the claims the server expects.
+
+**Use it from npm, as a stdio server.** With your own SurrealDB and embedding provider, `npx @komplyzen/komplyt-zero mcp` starts Zero as a stdio MCP server for your client. It reads the same `KG_DB_*` and `EMBEDDING_*` settings, and `KG_AUTH_MODE=local` skips the login. On Linux it needs `libsecret` (Debian and Ubuntu: `sudo apt install libsecret-1-0`), because its credential store is a native module; without it the command fails at start with `ERR_DLOPEN_FAILED`. For a first try, Docker is simpler, since it brings SurrealDB and Ollama along.
 
 ## Using it well
 
@@ -144,7 +144,9 @@ The variables you need for a first run are below; `src/.env.example` lists the r
 
 This repository is the engine. In local auth mode, or once it has an OIDC issuer to trust, it is a complete memory for one person, which you run yourself, record into and query from any MCP client.
 
-Working as a team is the paid part. The engine enforces who may read which container of nodes, but the code that sets up team work lives in `src/ee/` and belongs to Komplyt Teams: the API that creates shared containers and grants colleagues access to them, the OAuth integration for the Claude and ChatGPT connector directories, and the admin surface. Komplyzen also runs the engine as a hosted service: Komplyt Zero is free for one person, Personal raises the limits for heavier individual use, and Teams is priced per seat. Above that sits the Komplyt Platform, a separate, closed product that runs expert-authored workflows against the graph. Current tiers and prices are on [kompl.yt/zero](https://kompl.yt/zero), and questions about Teams or the Platform go to hello@kompl.yt.
+Working as a team is the paid part of the hosted product. The engine enforces who may read which container of nodes, but the code that sets up team work lives in `src/ee/` and belongs to Komplyt Teams: the API that creates shared containers and grants colleagues access to them, the OAuth integration for the Claude and ChatGPT connector directories, and the admin surface. That code is source-available, so you can self-host it for your own organisation without a licence key; what you can't do is offer it to others as a service.
+
+Komplyzen also runs the engine as a hosted service: Komplyt Zero is free for one person, Personal raises the limits for heavier individual use, and Teams is priced per seat. Above that sits the Komplyt Platform, a separate, closed product that runs expert-authored workflows against the graph. Current tiers and prices are on [kompl.yt/zero](https://kompl.yt/zero), and questions about Teams or the Platform go to hello@kompl.yt.
 
 ## Licence
 
