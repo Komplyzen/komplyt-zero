@@ -73,4 +73,4 @@ New features belong in the Apache-2.0 core unless they extend what `src/ee/` alr
 
 ## Questions
 
-Open an [issue](https://github.com/Komplyzen/komplyt-zero/issues) for bug reports and ideas, which keeps them searchable. For quick questions and informal discussion, join us on [Discord](https://discord.gg/y2X32ddCc). Security problems go to security@kompl.yt instead; see [SECURITY.md](SECURITY.md).
+Open an [issue](https://github.com/Komplyzen/komplyt-zero/issues) for bug reports and ideas, which keeps them searchable. For quick questions and informal discussion, join us on [Discord](https://discord.gg/4scu8m3xXg). Security problems go to security@kompl.yt instead; see [SECURITY.md](SECURITY.md).
