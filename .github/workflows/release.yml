@@ -1,20 +1,25 @@
 name: Release
 
-# Tag vX.Y.Z -> npm (@komplyzen/komplyt-zero, provenance) -> MCP Registry, and in
-# parallel a multi-arch image on ghcr.io/komplyzen/komplyt-zero.
-# No long-lived secrets: npm uses trusted publishing (OIDC) and the registry uses
-# GitHub OIDC. One-time setup, in this order:
+# Tag vX.Y.Z -> npm (@komplyzen/komplyt-zero, provenance, STAGED), and in parallel a
+# multi-arch image on ghcr.io/komplyzen/komplyt-zero. The npm version only goes live when
+# a maintainer approves it with 2FA (npm stage approve); the MCP Registry entry is then
+# published by running this workflow on the tag (workflow_dispatch), because the registry
+# checks that the npm version exists.
+# No long-lived secrets: npm uses trusted publishing (OIDC, permission "stage publish")
+# and the registry uses GitHub OIDC. One-time setup, in this order:
 #   1. publish a throwaway first version by hand (docs in CONTRIBUTING.md, "Releasing")
 #   2. npmjs.com -> package -> Settings -> Trusted publisher: org Komplyzen, repo
-#      komplyt-zero, workflow release.yml
+#      komplyt-zero, workflow release.yml, permission npm stage publish only
 #   3. later releases: bump version in src/package.json and server.json, merge, tag
-#      the merged commit, push the tag. Only maintainers can push v* tags (tag ruleset).
+#      the merged commit, push the tag, approve the staged version, run the registry job.
+#      Only maintainers can push v* tags (tag ruleset).
 # A pull request that touches the release files runs the same checks without
 # publishing anything.
 
 on:
   push:
     tags: ['v*']
+  workflow_dispatch: # run on a tag ref after approving the staged npm version: registry job only
   pull_request:
     paths:
       - .github/workflows/release.yml
@@ -27,11 +32,12 @@ permissions: {}
 
 jobs:
   publish:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
-      id-token: write # npm trusted publishing + MCP Registry OIDC
+      id-token: write # npm trusted publishing
     env:
       RELEASING: ${{ github.ref_type == 'tag' }}
     steps:
@@ -76,15 +82,37 @@ jobs:
         if: env.RELEASING != 'true'
         working-directory: src
         run: npm publish --dry-run
-      - name: Publish to npm (prepack builds without tests and adds LICENSE)
+      - name: Stage on npm (prepack builds without tests and adds LICENSE; goes live on npm stage approve)
         if: env.RELEASING == 'true'
         working-directory: src
         run: |
           # A prerelease (1.0.0-rc.1) must not become the "latest" dist-tag.
           case "$GITHUB_REF_NAME" in *-*) tag=next ;; *) tag=latest ;; esac
-          npm publish --tag "$tag"
+          npm stage publish --tag "$tag"
+
+  registry:
+    # Run by hand on the tag (Actions -> Release -> Run workflow, branch/tag = vX.Y.Z)
+    # after the staged npm version was approved: the registry verifies the npm package.
+    if: github.event_name == 'workflow_dispatch' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # MCP Registry OIDC
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The tagged commit is on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Tag and server.json agree, and that version is live on npm
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          [ "$ver" = "$(jq -r .version server.json)" ]
+          [ "$ver" = "$(jq -r '.packages[0].version' server.json)" ]
+          npm view "@komplyzen/komplyt-zero@${ver}" version | grep -qx "$ver"
       - name: Install mcp-publisher (pinned, checksum verified)
-        if: env.RELEASING == 'true'
         env:
           MCP_PUBLISHER_VERSION: v1.8.1
           MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
@@ -93,13 +121,12 @@ jobs:
           echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
           tar xzf mcp-publisher.tar.gz mcp-publisher
       - name: Authenticate to the MCP Registry
-        if: env.RELEASING == 'true'
         run: ./mcp-publisher login github-oidc
       - name: Publish to the MCP Registry
-        if: env.RELEASING == 'true'
         run: ./mcp-publisher publish
 
   image:
+    if: github.event_name != 'workflow_dispatch'
     # Built from src/Dockerfile (the same file docker-compose.yml builds), so the image
     # contains ee/ under its own licence like the compose build does. The first push creates the
     # package as private: set it to public once under the org's Packages settings.
