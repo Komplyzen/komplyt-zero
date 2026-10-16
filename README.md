@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/komplyt-logo-white.svg">
+    <img src="docs/assets/komplyt-logo.svg" alt="Komplyt" width="260">
+  </picture>
+</p>
+
 # Komplyt Zero
 
 An open-core memory graph for your AI tools. Run it yourself, or use ours in the EU.
