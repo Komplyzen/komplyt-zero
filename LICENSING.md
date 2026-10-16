@@ -9,4 +9,4 @@ komplyt-zero is open core. The licence depends on the path:
 
 Files under `src/ee/` carry an `SPDX-License-Identifier: Elastic-2.0` header. The server runs without `src/ee/`; it then logs that it is the open-source edition and leaves those routes out.
 
-ELv2 lets you use, modify and self-host the `src/ee/` code for your own organisation. It forbids offering it to others as a hosted or managed service. There is no licence key.
+The Docker image built from this repository contains `src/ee/`, so the code can run from the image. It is nevertheless not covered by the Apache licence: only the terms in [src/ee/LICENSE](src/ee/LICENSE) apply to it.

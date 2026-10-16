@@ -148,7 +148,7 @@ Working as a team is the paid part. The engine enforces who may read which conta
 
 ## Licence
 
-The engine is licensed under [Apache-2.0](LICENSE) (see [LICENSING.md](LICENSING.md) for the split). The code in `src/ee/` (OAuth discovery metadata for connector directories, the REST API for managing shared containers, and the admin and purge routes) is source-available under the [Elastic License 2.0](src/ee/LICENSE), which lets you use, modify and self-host it for your own organisation (there is no licence key) but forbids offering it to others as a hosted or managed service. The server runs without `src/ee/`; it then logs that it is the open-source edition and leaves those routes out.
+The engine is licensed under [Apache-2.0](LICENSE) (see [LICENSING.md](LICENSING.md) for the split). The code in `src/ee/` (OAuth discovery metadata for connector directories, the REST API for managing shared containers, and the admin and purge routes) is not part of the Apache-2.0 engine and is not covered by that licence. It is source-available under the [Elastic License 2.0](src/ee/LICENSE), and only those terms apply to it, although the Docker image contains it. The server runs without `src/ee/`; it then logs that it is the open-source edition and leaves those routes out.
 
 Zero stores its data in [SurrealDB](https://surrealdb.com), which is licensed under the Business Source License 1.1. Self-hosting SurrealDB for your own use is permitted under that licence, but because of it the stack as a whole is not OSI open source, and we don't describe it as such.
 
