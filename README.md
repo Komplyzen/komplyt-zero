@@ -144,9 +144,7 @@ The variables you need for a first run are below; `src/.env.example` lists the r
 
 This repository is the engine. In local auth mode, or once it has an OIDC issuer to trust, it is a complete memory for one person, which you run yourself, record into and query from any MCP client.
 
-Working as a team is the paid part of the hosted product. The engine enforces who may read which container of nodes, but the code that sets up team work lives in `src/ee/` and belongs to Komplyt Teams: the API that creates shared containers and grants colleagues access to them, the OAuth integration for the Claude and ChatGPT connector directories, and the admin surface. That code is source-available, so you can self-host it for your own organisation without a licence key; what you can't do is offer it to others as a service.
-
-Komplyzen also runs the engine as a hosted service: Komplyt Zero is free for one person, Personal raises the limits for heavier individual use, and Teams is priced per seat. Above that sits the Komplyt Platform, a separate, closed product that runs expert-authored workflows against the graph. Current tiers and prices are on [kompl.yt/zero](https://kompl.yt/zero), and questions about Teams or the Platform go to hello@kompl.yt.
+Working as a team is the paid part. The engine enforces who may read which container of nodes, but the code that sets up team work lives in `src/ee/` and belongs to Komplyt Teams: the API that creates shared containers and grants colleagues access to them, the OAuth integration for the Claude and ChatGPT connector directories, and the admin surface. Komplyzen also runs the engine as a hosted service: Komplyt Zero is free for one person, Personal raises the limits for heavier individual use, and Teams is priced per seat. Above that sits the Komplyt Platform, a separate, closed product that runs expert-authored workflows against the graph. Current tiers and prices are on [kompl.yt/zero](https://kompl.yt/zero), and questions about Teams or the Platform go to hello@kompl.yt.
 
 ## Licence
 
