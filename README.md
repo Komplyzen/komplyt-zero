@@ -20,7 +20,13 @@ claude mcp add --transport http komplyt-zero https://kg.kompl.yt/mcp
 
 ## What it looks like
 
-An agent working on a webhook service records a decision:
+An agent working on a webhook service starts a session, creating the project the first time:
+
+```json
+{ "tool": "kg_session_start", "arguments": { "project": "acme-api", "create_project": true } }
+```
+
+It then records a decision:
 
 ```json
 {
