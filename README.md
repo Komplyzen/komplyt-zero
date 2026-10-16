@@ -48,7 +48,7 @@ The decision comes back first. Spreading activation also returns the nodes linke
 
 Every node carries an embedding and a decay score. A query ranks candidates by `0.7 × cosine similarity + 0.3 × decay score`, then follows the graph's edges for up to three hops (two by default) to pull in related nodes, each hop weakening the signal by half.
 
-The decay score is how the graph forgets. Each time a session starts in a project, every node in that project loses 15 % of its score. Nodes that agents query or update get some of it back, more when they sit in a dense neighbourhood. Knowledge that keeps being used stays near the top, and knowledge nobody touches fades without anyone having to curate it. Decay never deletes anything; a faded node still turns up when a query matches it closely enough.
+The decay score is how the graph forgets. Each time a session starts in a project, every node in that project keeps 85 % of its score, so scores fall off exponentially. Nodes that agents update climb back toward a ceiling of 0.85, by more when they sit in a dense neighbourhood, and a query gives a smaller lift. Knowledge that keeps being used stays near the top, and knowledge nobody touches fades without anyone having to curate it. Decay never deletes anything; a faded node still turns up when a query matches it closely enough.
 
 The graph, the decay and the spreading activation are all in this repository under Apache-2.0. The hosted service runs the same ranking code.
 
