@@ -5,9 +5,15 @@ An open-source memory graph for your AI tools. Run it yourself, or use ours in t
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![CI](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml/badge.svg)](https://github.com/Komplyzen/komplyt-zero/actions/workflows/ci.yml)
 
-Zero is an MCP server that gives Claude, ChatGPT, Cursor and any other MCP client one memory they share. Your agents write down what was decided, found or tried, together with the reason, as typed nodes in a graph. A later session, in the same tool or a different one, finds those nodes by meaning instead of by keyword, so the reasoning behind last month's choice is there when someone is about to undo it.
+Agents forget why a decision was made the moment a session ends, and every client keeps its own notes. Zero is an MCP server that gives Claude, ChatGPT, Cursor and any other MCP client one shared memory. Agents record decisions, problems and approaches together with the reason, as typed nodes in a graph. A later session, in any client, finds them by meaning instead of keyword, so the reasoning behind last month's choice is there when someone is about to undo it.
 
-Zero does not store your chats. It stores what the agent was asked to keep, which in practice means decisions, problems, observations and approaches, each with the reason that makes it worth keeping.
+Zero stores what the agent was asked to keep, not your chats. Knowledge nobody uses fades on its own, and the engine behind all of it is in this repository under Apache-2.0.
+
+To try it, add the hosted service (free for one person, data stored in Frankfurt) to Claude Code, or [run it yourself](#getting-started):
+
+```bash
+claude mcp add --transport http komplyt-zero https://kg.kompl.yt/mcp
+```
 
 ## What it looks like
 
@@ -54,7 +60,7 @@ claude mcp add --transport http komplyt-zero https://kg.kompl.yt/mcp
 
 Then run `/mcp` inside Claude Code to sign in. Data is stored in Frankfurt. Step-by-step instructions for each client are in [docs/connectors.md](docs/connectors.md).
 
-**Run it yourself, with Docker.** The quickest route is the compose file: SurrealDB, Ollama embeddings and the server in one command. It needs Docker with the Compose plugin (`docker compose version` should print a version; on Debian the `docker.io` package does not include it, install `docker-compose` (Ubuntu: `docker-compose-v2`) or use Docker's own packages).
+**Run it yourself, with Docker.** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It needs Docker with the Compose plugin: `docker compose version` should print a version. Debian's `docker.io` package lacks it, so install `docker-compose` (Ubuntu: `docker-compose-v2`) or Docker's own packages.
 
 ```bash
 git clone https://github.com/Komplyzen/komplyt-zero.git
@@ -63,7 +69,7 @@ KG_JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
 claude mcp add --transport http zero http://localhost:3000/mcp
 ```
 
-The first start downloads the embedding model (`bge-m3`, roughly 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, every request is one fixed user in one fixed tenant, and the first use creates a default container called "Company Knowledge". That is built for one person on one machine, so the compose file publishes the port on `127.0.0.1` only. Do not publish it further, or put a proxy in front of it, unless something in front authenticates callers.
+The first start downloads the embedding model (`bge-m3`, about 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't expose it further, or put a proxy in front, unless something there authenticates callers.
 
 **Run it yourself, without Docker for the server.** Zero needs [Bun](https://bun.sh), a SurrealDB instance and an embedding provider:
 
@@ -78,13 +84,13 @@ cp .env.example .env             # fill in the values. For single-user use: set 
 bun index.ts
 ```
 
-There are two ways to handle identity. With `KG_AUTH_MODE=local` you need no identity provider. The server also listens on `127.0.0.1:3000` unless you set `LISTEN_ADDR`, and it rejects browser requests from other origins, other `Host` values (`KG_LOCAL_ALLOWED_HOSTS` adds some) and non-JSON bodies. For a team or a public deployment, leave the mode at its default: the server then accepts bearer JWTs from an OIDC issuer you point it at, and every token needs a `tenantId` claim, which is what scopes each query to one tenant. Keycloak, Zitadel, Authentik or any other issuer that publishes a JWKS and lets you add a custom claim will do. The two modes cannot be combined: local mode refuses to start when `KOMPLYT_JWKS_URL` or `KOMPLYT_ISSUER` is set. [docs/self-hosting.md](docs/self-hosting.md) walks through the whole setup, including the claims the server expects.
+Identity has two modes. `KG_AUTH_MODE=local` needs no identity provider: the server listens on `127.0.0.1:3000` unless you set `LISTEN_ADDR`, and rejects browser requests from other origins, other `Host` values (`KG_LOCAL_ALLOWED_HOSTS` adds some) and non-JSON bodies. For a team or a public deployment, keep the default mode: the server accepts bearer JWTs from an OIDC issuer you point it at (Keycloak, Zitadel, Authentik, or anything that publishes a JWKS and can add a custom claim), and every token needs a `tenantId` claim, which scopes each query to one tenant. The modes can't be combined: local mode refuses to start when `KOMPLYT_JWKS_URL` or `KOMPLYT_ISSUER` is set. [docs/self-hosting.md](docs/self-hosting.md) covers the full setup and the claims the server expects.
 
-**Use it from npm, as a stdio server.** If you already run SurrealDB and an embedding provider, `npx @komplyzen/komplyt-zero mcp` starts Zero as a stdio MCP server for your client. It reads the same `KG_DB_*` and `EMBEDDING_*` settings as above, and `KG_AUTH_MODE=local` skips the login. On Linux it needs `libsecret` installed (Debian and Ubuntu: `sudo apt install libsecret-1-0`), because the credential store it links against is a native module; without it the command fails at start with `ERR_DLOPEN_FAILED`. For a first try, the Docker route above is simpler, since it brings SurrealDB and Ollama along.
+**Use it from npm, as a stdio server.** With your own SurrealDB and embedding provider, `npx @komplyzen/komplyt-zero mcp` starts Zero as a stdio MCP server for your client. It reads the same `KG_DB_*` and `EMBEDDING_*` settings, and `KG_AUTH_MODE=local` skips the login. On Linux it needs `libsecret` (Debian and Ubuntu: `sudo apt install libsecret-1-0`), because its credential store is a native module; without it the command fails at start with `ERR_DLOPEN_FAILED`. For a first try, Docker is simpler.
 
 ## Using it well
 
-The server tells every client how to use it, but a few habits make the difference between a graph that answers questions and a pile of notes. Query before you record, because the server does not deduplicate. Put the reason in the content, since the content is the only thing that gets embedded. Start each session with the right `project`, because decay and filtering both key on it. At the end of a session, re-activate the nodes you relied on so they stay findable.
+The server tells every client how to use it, but a few habits separate a graph that answers questions from a pile of notes. Query before you record, because the server doesn't deduplicate. Put the reason in the content, since only the content is embedded. Start each session with the right `project`, because decay and filtering key on it. At the end, re-activate the nodes you relied on so they stay findable.
 
 [docs/using-zero.md](docs/using-zero.md) collects what we learned running Zero on our own work since early 2026: what to record and what to leave out, how to replace a decision without losing its history, which queries retrieve badly, and the end-of-session routine we use. Ready-to-copy agent instructions and a session-close skill are in [examples/](examples/).
 
