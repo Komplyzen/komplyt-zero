@@ -16,7 +16,7 @@ name: kg-zero
 
 services:
   surrealdb:
-    image: surrealdb/surrealdb:v3.2.4
+    image: surrealdb/surrealdb:v3.3.3
     command: start --user root --pass root rocksdb:/data/kg.db
     # The image runs as an unprivileged user that cannot write to a fresh named volume.
     user: root
