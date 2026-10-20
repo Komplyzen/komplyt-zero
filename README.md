@@ -77,11 +77,13 @@ In Claude Code, run `/mcp` afterwards to sign in. Data is stored in Frankfurt. S
 ```bash
 git clone https://github.com/Komplyzen/komplyt-zero.git
 cd komplyt-zero
-KG_JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
+KG_JWT_SECRET=$(openssl rand -hex 32) DB_ROOT_PASS=$(openssl rand -hex 32) docker compose up --build
 claude mcp add --transport http zero http://localhost:3000/mcp
 ```
 
 The first start downloads the embedding model (`bge-m3`, about 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't publish the port beyond localhost, or put a proxy in front of it, unless the proxy authenticates callers.
+
+`KG_JWT_SECRET` and `DB_ROOT_PASS` are plain environment variables of the containers, so anyone with access to the Docker daemon can read them with `docker inspect`. SurrealDB reads its root password only from an argument or environment variable (no password file), so compose can't hide it. Both secrets stay per install: save them (for example in a `.env` next to the compose file) because the database keeps the first `DB_ROOT_PASS`; this setup is for fresh installs.
 
 **Run it yourself, without Docker for the server.** Zero needs [Bun](https://bun.sh), a SurrealDB instance and an embedding provider:
 

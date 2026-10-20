@@ -1,12 +1,18 @@
 # Self-hosted Zero: SurrealDB + Ollama embeddings + the server in local auth mode.
 #
-#   KG_JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
+#   export KG_JWT_SECRET=$(openssl rand -hex 32) DB_ROOT_PASS=$(openssl rand -hex 32)
+#   docker compose up --build
 #
 # MCP endpoint: http://localhost:3000/mcp  (no token needed, see below)
 #
 # KG_AUTH_MODE=local turns token checking OFF: anyone who can reach port 3000 is the one local
 # user. The port is therefore published on 127.0.0.1 only. Do not change that to 0.0.0.0, and
 # do not expose it through a proxy, unless something in front of it authenticates callers.
+#
+# KG_JWT_SECRET and DB_ROOT_PASS are plain environment variables, so anyone with access to the Docker
+# daemon can read them with `docker inspect`. SurrealDB reads its root password only from --pass or
+# SURREAL_PASS (no password-file option, and its image has no shell to wrap that), so a file-based
+# secret is not possible for it. Keep daemon access to trusted users and the DB_ROOT_PASS per-install.
 #
 # Data lives in the `surreal-data` volume (the migrations are applied once, then skipped).
 # The first start downloads the embedding model (bge-m3, roughly 1.2 GB) into `ollama-data`.
@@ -17,9 +23,14 @@ name: kg-zero
 services:
   surrealdb:
     image: surrealdb/surrealdb:v3.2.4
-    command: start --user root --pass root rocksdb:/data/kg.db
-    # The image runs as an unprivileged user that cannot write to a fresh named volume.
-    user: root
+    command: start rocksdb:/data/kg.db
+    # Runs as the image's own unprivileged user. Credentials come from the environment, not argv.
+    environment:
+      SURREAL_USER: root
+      SURREAL_PASS: ${DB_ROOT_PASS:?set DB_ROOT_PASS to a random secret, e.g. DB_ROOT_PASS=$(openssl rand -hex 32)}
+    depends_on:
+      surreal-init:
+        condition: service_completed_successfully
     # Not published to the host: only the other services need it.
     volumes:
       - surreal-data:/data
@@ -29,6 +40,16 @@ services:
       timeout: 5s
       retries: 30
     restart: unless-stopped
+
+  # One-shot: a fresh named volume is root-owned, the SurrealDB image runs as nonroot (uid 65532).
+  # The SurrealDB image is distroless (no shell, no chown), so a shell image does the chown.
+  surreal-init:
+    image: busybox:1.37
+    user: root
+    command: ["chown", "-R", "65532:65532", "/data"]
+    volumes:
+      - surreal-data:/data
+    restart: "no"
 
   # One-shot: creates the namespace/database and applies database/migrations/*.surql in order.
   # Skips everything when the baseline is already there (the baseline is not re-runnable).
@@ -44,6 +65,8 @@ services:
       SURREAL_HTTP: http://surrealdb:8000
       KG_DB_NS: kg
       KG_DB_NAME: main
+      SURREAL_USER: root
+      SURREAL_PASS: ${DB_ROOT_PASS:?set DB_ROOT_PASS to a random secret, e.g. DB_ROOT_PASS=$(openssl rand -hex 32)}
     entrypoint: ["/bin/sh", "/compose-migrate.sh"]
     restart: "no"
 
@@ -82,7 +105,7 @@ services:
     environment:
       KG_DB_URL: ws://surrealdb:8000
       KG_DB_USER: root
-      KG_DB_PASS: root
+      KG_DB_PASS: ${DB_ROOT_PASS:?set DB_ROOT_PASS to a random secret, e.g. DB_ROOT_PASS=$(openssl rand -hex 32)}
       KG_DB_NS: kg
       KG_DB_NAME: main
       # Authenticates the server's own SurrealDB sign-in (not a user token). Required: 32+ chars.

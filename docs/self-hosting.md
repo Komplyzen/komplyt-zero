@@ -97,6 +97,12 @@ Tokens expire, so for daily use put the server behind something that refreshes t
 
 The code in `src/ee/` is under the PolyForm Noncommercial License 1.0.0, or a commercial licence from Komplyzen (see the [README](../README.md#licence)). If you remove the folder, the server logs that it is running the open-source edition and leaves out the OAuth discovery endpoints, the container management API under `/api/v1/containers` and the admin routes. All MCP tools and the rest of the REST API keep working. Set `KG_REQUIRE_EE=true` if you want a missing `src/ee/` to stop the server instead.
 
+### Compose secrets
+
+`docker-compose.yml` needs `KG_JWT_SECRET` and `DB_ROOT_PASS` (both `openssl rand -hex 32`). They are ordinary environment variables of the containers, so anyone who can talk to the Docker daemon can read them with `docker inspect`. SurrealDB takes its root password only from `--pass` or `SURREAL_PASS`, with no password-file option, and its image has no shell to wrap that, so this can't be avoided. SurrealDB keeps the first `DB_ROOT_PASS` in its data volume; compose supports fresh installs, so to change it later, remove the `surreal-data` volume or change the root user inside SurrealDB.
+
+The `kg` container runs as the unprivileged `bun` user and SurrealDB as its `nonroot` user (uid 65532; the one-shot `surreal-init` service chowns the data volume once).
+
 `src/Dockerfile` copies `src/ee/`, so a container build without it needs that line removed.
 
 ## The stdio server
