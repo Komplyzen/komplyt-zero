@@ -78,10 +78,10 @@ jobs:
           bun install --frozen-lockfile
           bun run typecheck
           bun run test:run
-      - name: Check the package contents (prepack builds without tests and adds LICENSE)
+      - name: Check the package contents (prepack builds without tests and adds LICENSE; pack, not publish --dry-run, which fails once the version is on npm)
         if: env.RELEASING != 'true'
         working-directory: src
-        run: npm publish --dry-run
+        run: npm pack --dry-run
       - name: Stage on npm (prepack builds without tests and adds LICENSE; goes live on npm stage approve)
         if: env.RELEASING == 'true'
         working-directory: src
