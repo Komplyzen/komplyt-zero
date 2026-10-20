@@ -101,11 +101,11 @@ The code in `src/ee/` is under the PolyForm Noncommercial License 1.0.0, or a co
 
 ## The compose quickstart
 
-`docker-compose.yml` is a quickstart for one person on one machine, not a production deployment: local auth mode (no tokens), one unreplicated SurrealDB, no backups, no TLS. For anything shared or long-lived use the steps above with your own SurrealDB, issuer and secrets management. Compose supports fresh installs only.
+`docker-compose.yml` is a quickstart for one person on one machine, not a production deployment: local auth mode (no tokens), one unreplicated SurrealDB, no backups, no TLS. For anything shared or long-lived use the steps above with your own SurrealDB, issuer and secrets management. Existing installs from before the hardening (root/root): put `DB_ROOT_PASS=root` and your original `KG_JWT_SECRET` in `.env`; tested, data and migrations carry over.
 
 ### Secrets
 
-`docker-compose.yml` needs `KG_JWT_SECRET` and `DB_ROOT_PASS` (both `openssl rand -hex 32`). They are ordinary environment variables of the containers, so anyone who can talk to the Docker daemon can read them with `docker inspect`. SurrealDB takes its root password only from `--pass` or `SURREAL_PASS`, with no password-file option, and its image has no shell to wrap that, so this can't be avoided. SurrealDB keeps the first `DB_ROOT_PASS` in its data volume: keep the value (for example in a `.env` next to the compose file), because a different one makes the migrate step fail with a hint. To change it later, remove the `surreal-data` volume or change the root user inside SurrealDB.
+`docker-compose.yml` needs `KG_JWT_SECRET` and `DB_ROOT_PASS` (both `openssl rand -hex 32`). They are ordinary environment variables of the containers, so anyone who can talk to the Docker daemon can read them with `docker inspect`. SurrealDB takes its root password only from `--pass` or `SURREAL_PASS`, with no password-file option, and its image has no shell to wrap that, so this can't be avoided. SurrealDB keeps the first `DB_ROOT_PASS` in its data volume: keep the value in a `.env` next to the compose file (the README command creates it once; compose reads it automatically). Losing or regenerating either value breaks the next start: `kg` crash-loops because the hash of `KG_JWT_SECRET` is not in `kg_config:signin` (see [signin-secret.md](signin-secret.md)), and `migrate` fails with a 401 because the database kept the first `DB_ROOT_PASS`. To change it later, remove the `surreal-data` volume or change the root user inside SurrealDB.
 
 ### Containers
 

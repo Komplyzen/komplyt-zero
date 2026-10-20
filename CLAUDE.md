@@ -127,7 +127,7 @@ databases' schemas (records and JWT keys ignored).
 **CI:** the public `ci.yml` is secretless: typecheck, unit tests with fixture embeddings, an `integration` job
 (every suite against a throwaway SurrealDB container provisioned by
 `scripts/apply-migrations.sh`, `KG_REQUIRE_DB=1`), a `container` job (hadolint on `src/Dockerfile`, then
-`scripts/compose-smoke.sh`: the compose stack stays unprivileged, the backend network stays internal, second start works), and `bun audit`, on every PR
+`scripts/compose-smoke.sh`: the compose stack stays unprivileged, the backend network stays internal, second start works, a changed `KG_JWT_SECRET` fails with the `.env` hint), and `bun audit`, on every PR
 including forks. Integration suites run
 in a private CI (dispatched by `notify-private.yml`; fork PRs need
 a maintainer's `/ok-to-test`; Dependabot PRs are treated the same way). It provisions a run-scoped database

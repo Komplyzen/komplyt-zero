@@ -2,8 +2,11 @@
 # A quickstart for one person on one machine, not production grade: no authentication, a single
 # database with no backups, no TLS. See docs/self-hosting.md for a real deployment.
 #
-#   export KG_JWT_SECRET=$(openssl rand -hex 32) DB_ROOT_PASS=$(openssl rand -hex 32)
+#   [ -f .env ] || { umask 077; printf 'KG_JWT_SECRET=%s\nDB_ROOT_PASS=%s\n' "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env; }
 #   docker compose up --build
+#
+# Compose reads .env from this directory (git-ignored). Keep it: both values are stored in the
+# volumes on first start, and a different one later breaks the start (see docs/self-hosting.md#secrets).
 #
 # MCP endpoint: http://localhost:3000/mcp  (no token needed, see below). If host port 3000 is taken, kg
 # stays in "Created" with "address already in use": change the host side of `ports` below.
@@ -17,7 +20,8 @@
 # SURREAL_PASS (no password-file option, and its image has no shell to wrap that), so a file-based
 # secret is not possible for it. Keep daemon access to trusted users and the DB_ROOT_PASS per-install.
 #
-# Fresh installs only: SurrealDB keeps the first DB_ROOT_PASS in the volume. Ollama is the one service that
+# SurrealDB keeps the first DB_ROOT_PASS in the volume; installs from before the hardening used root/root,
+# so put DB_ROOT_PASS=root (and your original KG_JWT_SECRET) in .env. Ollama is the one service that
 # still runs as root (upstream image); everything else is unprivileged, see docs/self-hosting.md.
 #
 # Data lives in the `surreal-data` volume (the migrations are applied once, then skipped).

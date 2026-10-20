@@ -1,6 +1,6 @@
 name: Release
 
-# Tag vX.Y.Z -> npm (@komplyzen/komplyt-zero, provenance, STAGED), and in parallel a
+# Tag vX.Y.Z -> npm (@komplyzen/komplyt-zero, provenance, STAGED), and then a
 # multi-arch image on ghcr.io/komplyzen/komplyt-zero. The npm version only goes live when
 # a maintainer approves it with 2FA (npm stage approve); the MCP Registry entry is then
 # published by running this workflow on the tag (workflow_dispatch), because the registry
@@ -126,6 +126,9 @@ jobs:
         run: ./mcp-publisher publish
 
   image:
+    # After publish (typecheck, tests, npm stage): a tag that fails them never pushes an image, `latest` included.
+    # Promoting/gating `latest` separately is still open (issue #22).
+    needs: publish
     if: github.event_name != 'workflow_dispatch'
     # Built from src/Dockerfile (the same file docker-compose.yml builds), so the image
     # contains ee/ under its own licence like the compose build does. The first push creates the
