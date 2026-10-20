@@ -103,6 +103,8 @@ The code in `src/ee/` is under the PolyForm Noncommercial License 1.0.0, or a co
 
 The `kg` container runs as the unprivileged `bun` user and SurrealDB as its `nonroot` user (uid 65532; the one-shot `surreal-init` service chowns the data volume once).
 
+Hardening in the compose file: every service drops all Linux capabilities and cannot gain privileges, `kg` has a read-only root filesystem (`/tmp` is a tmpfs), and `kg` and SurrealDB have memory and process limits (raise `mem_limit` for a very large graph; Ollama has a process limit only, since model size varies). Services sit on an internal `backend` network with no route out; only `kg` is also on a `frontend` network (it publishes `127.0.0.1:3000`), and only Ollama has an `egress` network, for the model download. Ollama itself runs as root, as its upstream image requires. Compose images are pinned by tag and digest, and `scripts/compose-smoke.sh` (run in CI) checks the above.
+
 `src/Dockerfile` copies `src/ee/`, so a container build without it needs that line removed.
 
 ## The stdio server

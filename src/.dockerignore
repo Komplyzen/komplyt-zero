@@ -1,0 +1,11 @@
+# Dockerfile COPYs explicit paths; this keeps secrets, VCS data, tests and local artifacts out of the build context.
+.env
+.env.*
+!.env.example
+.git
+node_modules
+dist
+coverage
+**/*.test.ts
+**/*.integration.test.ts
+benchmarks
