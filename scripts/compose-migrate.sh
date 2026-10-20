@@ -22,6 +22,9 @@ fail_on_err() { # label response-with-trailing-http-status-line
   body=$(printf '%s\n' "$2" | sed '$d')
   if [ -z "$body" ] || [ "$code" != 200 ] || printf '%s' "$body" | grep -q '"status":"ERR"'; then
     echo "[migrate] $1 failed (HTTP $code): $(printf '%s' "$body" | cut -c1-400)" >&2
+    if [ "$code" = 401 ]; then
+      echo "[migrate] DB_ROOT_PASS does not match the one this database was created with (SurrealDB keeps the first). Use the original value, or remove the surreal-data volume for a fresh install." >&2
+    fi
     exit 1
   fi
 }

@@ -72,7 +72,7 @@ The graph, the decay and the spreading activation are all in this repository und
 
 In Claude Code, run `/mcp` afterwards to sign in. Data is stored in Frankfurt. Step-by-step instructions for each client are in [docs/connectors.md](docs/connectors.md).
 
-**Run it yourself, with Docker.** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It needs Docker with the Compose plugin: `docker compose version` should print a version. Debian's `docker.io` package lacks it, so install `docker-compose` (Ubuntu: `docker-compose-v2`) or Docker's own packages.
+**Run it yourself, with Docker (quickstart).** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It is a quickstart for one person on one machine, **not production grade**: no authentication (local mode), a single unreplicated database, no backups, no TLS, and secrets passed as plain environment variables. For anything shared or long-lived, follow [docs/self-hosting.md](docs/self-hosting.md). It needs Docker with the Compose plugin: `docker compose version` should print a version. Debian's `docker.io` package lacks it, so install `docker-compose` (Ubuntu: `docker-compose-v2`) or Docker's own packages.
 
 ```bash
 git clone https://github.com/Komplyzen/komplyt-zero.git

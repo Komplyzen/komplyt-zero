@@ -1,4 +1,6 @@
 # Self-hosted Zero: SurrealDB + Ollama embeddings + the server in local auth mode.
+# A quickstart for one person on one machine, not production grade: no authentication, a single
+# database with no backups, no TLS. See docs/self-hosting.md for a real deployment.
 #
 #   export KG_JWT_SECRET=$(openssl rand -hex 32) DB_ROOT_PASS=$(openssl rand -hex 32)
 #   docker compose up --build
