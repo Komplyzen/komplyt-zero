@@ -126,7 +126,8 @@ databases' schemas (records and JWT keys ignored).
 
 **CI:** the public `ci.yml` is secretless: typecheck, unit tests with fixture embeddings, an `integration` job
 (every suite against a throwaway SurrealDB container provisioned by
-`scripts/apply-migrations.sh`, `KG_REQUIRE_DB=1`), and `bun audit`, on every PR
+`scripts/apply-migrations.sh`, `KG_REQUIRE_DB=1`), a `container` job (hadolint on `src/Dockerfile`, then
+`scripts/compose-smoke.sh`: the compose stack stays unprivileged, the backend network stays internal, second start works), and `bun audit`, on every PR
 including forks. Integration suites run
 in a private CI (dispatched by `notify-private.yml`; fork PRs need
 a maintainer's `/ok-to-test`; Dependabot PRs are treated the same way). It provisions a run-scoped database
@@ -226,6 +227,8 @@ database/
 
 scripts/
 ├── local-db.sh       # Local SurrealDB container (empty: run apply-migrations.sh next)
+├── compose-migrate.sh # docker-compose `migrate` service: schema + migrations for the compose stack (SURREAL_USER/SURREAL_PASS from DB_ROOT_PASS)
+├── compose-smoke.sh  # Boots the compose stack (fixture embeddings), asserts hardening + a second start; the CI `container` job
 ├── apply-migrations.sh # Apply database/migrations/*.surql to a fresh test database
 ├── schema-info.py    # A database's schema from INFO (no records, no JWT keys); --apply = runnable order
 └── schema-diff.sh    # Compare two databases' schemas
