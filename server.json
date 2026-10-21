@@ -9,7 +9,7 @@
     "subfolder": "src"
   },
   "websiteUrl": "https://github.com/Komplyzen/komplyt-zero",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "remotes": [
     {
       "type": "streamable-http",
@@ -20,7 +20,7 @@
     {
       "registryType": "npm",
       "identifier": "@komplyzen/komplyt-zero",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
