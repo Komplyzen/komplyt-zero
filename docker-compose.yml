@@ -87,7 +87,7 @@ services:
   migrate:
     <<: *hardened
     networks: [backend]
-    image: curlimages/curl:8.10.1@sha256:d9b4541e214bcd85196d6e92e2753ac6d0ea699f0af5741f8c6cccbfcf00ef4b
+    image: curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
     depends_on:
       surrealdb:
         condition: service_healthy
