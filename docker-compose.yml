@@ -9,7 +9,7 @@
 # volumes on first start, and a different one later breaks the start (see docs/self-hosting.md#secrets).
 #
 # MCP endpoint: http://localhost:3000/mcp  (no token needed, see below). If host port 3000 is taken, kg
-# stays in "Created" with "address already in use": change the host side of `ports` below.
+# stays in "Created" with "address already in use": set KG_PORT=3100 in .env (then use http://localhost:3100/mcp).
 #
 # KG_AUTH_MODE=local turns token checking OFF: anyone who can reach port 3000 is the one local
 # user. The port is therefore published on 127.0.0.1 only. Do not change that to 0.0.0.0, and
@@ -83,7 +83,7 @@ services:
     restart: "no"
 
   # One-shot: creates the namespace/database and applies database/migrations/*.surql in order.
-  # Skips everything when the baseline is already there (the baseline is not re-runnable).
+  # Files already recorded in _migrations are skipped; each file runs in a transaction (scripts/migrate.sh).
   migrate:
     <<: *hardened
     networks: [backend]
@@ -93,14 +93,16 @@ services:
         condition: service_healthy
     volumes:
       - ./database/migrations:/migrations:ro
-      - ./scripts/compose-migrate.sh:/compose-migrate.sh:ro
+      - ./scripts/migrate.sh:/migrate.sh:ro
     environment:
       SURREAL_HTTP: http://surrealdb:8000
       KG_DB_NS: kg
       KG_DB_NAME: main
+      MIGRATIONS_DIR: /migrations
+      MIGRATED_BY: compose
       SURREAL_USER: root
       SURREAL_PASS: ${DB_ROOT_PASS:?set DB_ROOT_PASS to a random secret, e.g. DB_ROOT_PASS=$(openssl rand -hex 32)}
-    entrypoint: ["/bin/sh", "/compose-migrate.sh"]
+    entrypoint: ["/bin/sh", "/migrate.sh"]
     restart: "no"
 
   ollama:
@@ -153,7 +155,7 @@ services:
       ollama-pull:
         condition: service_completed_successfully
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${KG_PORT:-3000}:3000"
     environment:
       KG_DB_URL: ws://surrealdb:8000
       KG_DB_USER: root

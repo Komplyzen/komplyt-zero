@@ -20,7 +20,7 @@ fail() { echo "compose-smoke: $*" >&2; dc logs --tail 40 >&2 || true; exit 1; }
 
 # Static guard: no hardcoded root credentials. (surreal-init legitimately runs as root to chown the
 # volume; the runtime checks below cover the long-running services.)
-! grep -nE 'root:root|--pass root' docker-compose.yml scripts/compose-migrate.sh || fail "hardcoded root credentials"
+! grep -nE 'root:root|--pass root' docker-compose.yml scripts/migrate.sh || fail "hardcoded root credentials"
 
 dc up -d --wait surrealdb
 dc run --rm migrate
@@ -72,7 +72,8 @@ mcp kg_query '{"query":"survives a restart","project":"smoke"}' | grep -q "survi
 OTHER=$(openssl rand -hex 32)
 sed -i "s/^KG_JWT_SECRET=.*/KG_JWT_SECRET=$OTHER/" "$ENV_FILE"
 ! dc up -d --no-deps --wait --wait-timeout 60 --force-recreate kg >/dev/null 2>&1 || fail "kg started with a different KG_JWT_SECRET"
-dc logs kg 2>&1 | grep -q "docs/self-hosting.md#secrets" || fail "the wrong-secret failure has no .env hint"
+kg_logs=$(dc logs kg 2>&1) # captured first: `| grep -q` would SIGPIPE dc under pipefail
+grep -q "docs/self-hosting.md#secrets" <<<"$kg_logs" || fail "the wrong-secret failure has no .env hint"
 sed -i "s/^KG_JWT_SECRET=.*/KG_JWT_SECRET=$KG_JWT_SECRET/" "$ENV_FILE"
 dc up -d --no-deps --wait --force-recreate kg
 echo "compose-smoke: ok"
