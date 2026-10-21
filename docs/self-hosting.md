@@ -49,16 +49,16 @@ For anything you intend to keep, run SurrealDB the way you run your other databa
 
 ## 2. Apply the schema
 
-The schema is defined only by the migrations in `database/migrations/`. Apply every file in filename order, with whatever tool you prefer. With curl against the local instance:
+The schema is defined only by the migrations in `database/migrations/`. `scripts/migrate.sh` applies them in filename order and records each one in the `_migrations` table, so it is safe to run again: files already recorded are skipped. Against the local instance from step 1:
 
 ```bash
-for f in ../database/migrations/*.surql; do
-  curl -s -X POST http://127.0.0.1:8000/sql -u root:root -H "Accept: application/json" \
-    -H "surreal-ns: kg" -H "surreal-db: local" --data-binary @"$f" > /dev/null
-done
+SURREAL_HTTP=http://127.0.0.1:8000 SURREAL_USER=root SURREAL_PASS=root KG_DB_NAME=local \
+  ../scripts/migrate.sh
 ```
 
-Apply new migrations the same way when you upgrade. They are written to be applied once each, in order.
+It needs `curl` and a POSIX shell. `KG_DB_NS` defaults to `kg`. Run the same command again after every upgrade; it applies only the new files. Each file runs together with its `_migrations` row in one transaction, so a file that fails halfway changes nothing and the next run retries it. If a recorded file's checksum no longer matches the file on disk, the script warns (migrations are never edited, so that means the wrong checkout). The docker-compose stack runs this script in its `migrate` service.
+
+A database that a failed run of the older compose runner left half-migrated has to be recreated (remove the volume); with this script that state cannot arise.
 
 ## 3. Configure
 
@@ -111,7 +111,7 @@ The code in `src/ee/` is under the PolyForm Noncommercial License 1.0.0, or a co
 
 The `kg` container runs as the unprivileged `bun` user and SurrealDB as its `nonroot` user (uid 65532; the one-shot `surreal-init` service chowns the data volume once). Every service drops all Linux capabilities and cannot gain privileges, `kg` has a read-only root filesystem (`/tmp` is a tmpfs), and `kg` and SurrealDB have memory and process limits (raise `mem_limit` for a very large graph; Ollama has a process limit only, since model size varies). Ollama still runs as root, as its upstream image requires.
 
-Services sit on an internal `backend` network with no route out. Only `kg` is also on a `frontend` network, which publishes `127.0.0.1:3000` and gives `kg` outbound access (for a hosted embedding provider); only Ollama has an `egress` network, for the model download. If something on your machine already uses port 3000, `kg` stays in "Created" with "address already in use": publish another host port with a compose override (`ports: !override ["127.0.0.1:3100:3000"]`).
+Services sit on an internal `backend` network with no route out. Only `kg` is also on a `frontend` network, which publishes `127.0.0.1:3000` and gives `kg` outbound access (for a hosted embedding provider); only Ollama has an `egress` network, for the model download. If something on your machine already uses port 3000, `kg` stays in "Created" with "address already in use": set `KG_PORT=3100` (any free port) in `.env` and run `docker compose up -d` again; the MCP endpoint is then `http://localhost:3100/mcp`.
 
 Compose images are pinned by tag and digest. `scripts/compose-smoke.sh` (the `container` job in CI) starts SurrealDB and `kg` with fixture embeddings, so no model download, and checks the non-root users, dropped capabilities, the internal network, one MCP call and a second start. Run it locally with Docker and the Compose plugin.
 

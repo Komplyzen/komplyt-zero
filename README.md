@@ -83,7 +83,9 @@ claude mcp add --transport http zero http://localhost:3000/mcp
 ```
 
 The first start downloads the embedding model (`bge-m3`, about 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't publish the port beyond localhost, or put a proxy in front of it, unless the proxy authenticates callers.
-If something on your machine already uses port 3000, the `kg` container won't start ("address already in use"): see [docs/self-hosting.md](docs/self-hosting.md#the-compose-quickstart) for a one-line override.
+Once it is up, `http://localhost:3000/docs` shows the server's documentation page and `http://localhost:3000/health` answers when it is ready.
+
+**Port 3000 already in use?** Then the `kg` container won't start ("address already in use"). Add `KG_PORT=3100` (any free port) to `.env`, run `docker compose up -d` again, and use `http://localhost:3100/mcp` and `http://localhost:3100/docs` instead.
 
 `KG_JWT_SECRET` and `DB_ROOT_PASS` are plain environment variables of the containers, so anyone with access to the Docker daemon can read them with `docker inspect`. SurrealDB reads its root password only from an argument or environment variable (no password file), so compose can't hide it. The command above writes both secrets to `.env` once (mode 600, git-ignored; the `[ -f .env ]` guard never overwrites it). Keep that file: the database keeps the first `DB_ROOT_PASS` and the first `KG_JWT_SECRET` hash, so a lost or regenerated value makes the next start fail (`kg` crash-loops, `migrate` gets a 401). Existing installs from before the hardening (root/root): put `DB_ROOT_PASS=root` and your original `KG_JWT_SECRET` in `.env`; tested, data and migrations carry over.
 
@@ -94,7 +96,7 @@ git clone https://github.com/Komplyzen/komplyt-zero.git
 cd komplyt-zero/src
 bun install
 ../scripts/local-db.sh up        # SurrealDB v3.2.4 in Docker, prints the KG_DB_* values
-# apply database/migrations/*.surql in filename order (see docs/self-hosting.md)
+SURREAL_HTTP=http://127.0.0.1:8000 SURREAL_USER=root SURREAL_PASS=root KG_DB_NAME=local ../scripts/migrate.sh
 cp .env.example .env             # fill in the values. For single-user use: set KG_AUTH_MODE=local and
                                  # comment out KOMPLYT_JWKS_URL and KOMPLYT_ISSUER (local mode refuses to start with them)
 bun index.ts

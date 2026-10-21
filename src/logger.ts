@@ -45,7 +45,9 @@ function createRootLogger(): pino.Logger {
     });
   }
 
-  if (process.env.NODE_ENV !== 'production') {
+  // pino-pretty is a devDependency: published installs (npx, bun index.ts self-hosters) don't have
+  // it, so it is opt-in, never the default.
+  if (process.env.NODE_ENV === 'development' || /^(1|true|on|yes)$/i.test(process.env.LOG_PRETTY ?? '')) {
     return pino({
       ...baseOptions,
       transport: {

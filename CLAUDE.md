@@ -227,7 +227,7 @@ database/
 
 scripts/
 ├── local-db.sh       # Local SurrealDB container (empty: run apply-migrations.sh next)
-├── compose-migrate.sh # docker-compose `migrate` service: schema + migrations for the compose stack (SURREAL_USER/SURREAL_PASS from DB_ROOT_PASS)
+├── migrate.sh        # Tracked migration runner (_migrations, one transaction per file, safe to re-run): the compose `migrate` service and self-hosters
 ├── compose-smoke.sh  # Boots the compose stack (fixture embeddings), asserts hardening + a second start; the CI `container` job
 ├── apply-migrations.sh # Apply database/migrations/*.surql to a fresh test database
 ├── schema-info.py    # A database's schema from INFO (no records, no JWT keys); --apply = runnable order
@@ -308,6 +308,7 @@ Batch related lookups into a single `db.query()` call (multiple statements, one 
 | `KG_SESSION_PRUNE_INTERVAL_MINUTES` | `60` | How often the pruner runs |
 | `METRICS_TOKEN` | unset | Bearer token (min 16 chars) required on `/metrics` and `/pool-metrics`; absent = open |
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` |
+| `LOG_PRETTY` | unset | `1`/`true`/`on` pretty-prints logs (needs the `pino-pretty` devDependency; `NODE_ENV=development` does the same). Default: JSON lines |
 | `LOGTAIL_TOKEN` | unset | Better Stack log shipping (optional) |
 | `DEV_SURFACE_ERRORS` | `false` | Surface real error details in JSON-RPC responses |
 | `KG_REQUIRE_EE` | `false` | Refuse to start without `src/ee/` (set in hosted deploys) |

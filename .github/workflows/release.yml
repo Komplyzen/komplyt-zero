@@ -15,6 +15,8 @@ name: Release
 #      Only maintainers can push v* tags (tag ruleset).
 # A pull request that touches the release files runs the same checks without
 # publishing anything.
+# The image is pushed as X.Y.Z and X.Y only after it booted against a throwaway SurrealDB;
+# `latest` moves in a separate job that waits for the `release-latest` environment's approval.
 
 on:
   push:
@@ -126,8 +128,9 @@ jobs:
         run: ./mcp-publisher publish
 
   image:
-    # After publish (typecheck, tests, npm stage): a tag that fails them never pushes an image, `latest` included.
-    # Promoting/gating `latest` separately is still open (issue #22).
+    # After publish (typecheck, tests, npm stage): a tag that fails them never pushes an image.
+    # Before the push the built image must boot against a real SurrealDB and answer /health.
+    # This job pushes X.Y.Z and X.Y only; `latest` is moved by the `latest` job below.
     needs: publish
     if: github.event_name != 'workflow_dispatch'
     # Built from src/Dockerfile (the same file docker-compose.yml builds), so the image
@@ -165,8 +168,29 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
             type=ref,event=pr
+      - name: Build the image for the boot check (amd64, loaded, not pushed)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ./src
+          load: true
+          tags: kg-release-check
+      - name: Boot check (the image starts against a migrated SurrealDB and answers /health and /ready)
+        # Same engine version as docker-compose.yml. Throwaway password, host networking, nothing leaves the runner.
+        run: |
+          docker run -d --name surrealdb --network host surrealdb/surrealdb:v3.2.4 start --user root --pass root memory
+          SURREAL_HTTP=http://127.0.0.1:8000 SURREAL_USER=root SURREAL_PASS=root KG_DB_NAME=release_check scripts/apply-migrations.sh
+          docker run -d --name kg --network host \
+            -e KG_AUTH_MODE=local -e LISTEN_ADDR=127.0.0.1:3000 -e EMBEDDING_PROVIDER=fixture \
+            -e KG_DB_URL=ws://127.0.0.1:8000 -e KG_DB_USER=root -e KG_DB_PASS=root \
+            -e KG_DB_NS=kg -e KG_DB_NAME=release_check \
+            -e KG_JWT_SECRET="$(openssl rand -hex 32)" \
+            kg-release-check
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:3000/health >/dev/null 2>&1 && curl -fsS http://127.0.0.1:3000/ready && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000/health && curl -fsS http://127.0.0.1:3000/ready || { docker logs kg >&2; exit 1; }
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: ./src
@@ -174,3 +198,27 @@ jobs:
           push: ${{ env.RELEASING == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  latest:
+    # `latest` is what self-hosters pull by default, so it moves only after a maintainer approves the
+    # `release-latest` environment (Settings -> Environments -> required reviewers: do this at the
+    # same point as `npm stage approve`). Prereleases (a `-` in the tag) never move it.
+    needs: image
+    if: github.ref_type == 'tag' && !contains(github.ref_name, '-') && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Point latest at the released version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          docker buildx imagetools create -t ghcr.io/komplyzen/komplyt-zero:latest "ghcr.io/komplyzen/komplyt-zero:${TAG#v}"

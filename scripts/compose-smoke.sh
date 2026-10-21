@@ -20,7 +20,7 @@ fail() { echo "compose-smoke: $*" >&2; dc logs --tail 40 >&2 || true; exit 1; }
 
 # Static guard: no hardcoded root credentials. (surreal-init legitimately runs as root to chown the
 # volume; the runtime checks below cover the long-running services.)
-! grep -nE 'root:root|--pass root' docker-compose.yml scripts/compose-migrate.sh || fail "hardcoded root credentials"
+! grep -nE 'root:root|--pass root' docker-compose.yml scripts/migrate.sh || fail "hardcoded root credentials"
 
 dc up -d --wait surrealdb
 dc run --rm migrate
