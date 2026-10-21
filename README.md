@@ -72,16 +72,20 @@ The graph, the decay and the spreading activation are all in this repository und
 
 In Claude Code, run `/mcp` afterwards to sign in. Data is stored in Frankfurt. Step-by-step instructions for each client are in [docs/connectors.md](docs/connectors.md).
 
-**Run it yourself, with Docker.** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It needs Docker with the Compose plugin: `docker compose version` should print a version. Debian's `docker.io` package lacks it, so install `docker-compose` (Ubuntu: `docker-compose-v2`) or Docker's own packages.
+**Run it yourself, with Docker (quickstart).** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It is a quickstart for one person on one machine, **not production grade**: no authentication (local mode), a single unreplicated database, no backups, no TLS, and secrets passed as plain environment variables. For anything shared or long-lived, follow [docs/self-hosting.md](docs/self-hosting.md). It needs Docker with the Compose plugin: `docker compose version` should print a version. Debian's `docker.io` package lacks it, so install `docker-compose` (Ubuntu: `docker-compose-v2`) or Docker's own packages.
 
 ```bash
 git clone https://github.com/Komplyzen/komplyt-zero.git
 cd komplyt-zero
-KG_JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
+[ -f .env ] || { umask 077; printf 'KG_JWT_SECRET=%s\nDB_ROOT_PASS=%s\n' "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env; }
+docker compose up --build
 claude mcp add --transport http zero http://localhost:3000/mcp
 ```
 
 The first start downloads the embedding model (`bge-m3`, about 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't publish the port beyond localhost, or put a proxy in front of it, unless the proxy authenticates callers.
+If something on your machine already uses port 3000, the `kg` container won't start ("address already in use"): see [docs/self-hosting.md](docs/self-hosting.md#the-compose-quickstart) for a one-line override.
+
+`KG_JWT_SECRET` and `DB_ROOT_PASS` are plain environment variables of the containers, so anyone with access to the Docker daemon can read them with `docker inspect`. SurrealDB reads its root password only from an argument or environment variable (no password file), so compose can't hide it. The command above writes both secrets to `.env` once (mode 600, git-ignored; the `[ -f .env ]` guard never overwrites it). Keep that file: the database keeps the first `DB_ROOT_PASS` and the first `KG_JWT_SECRET` hash, so a lost or regenerated value makes the next start fail (`kg` crash-loops, `migrate` gets a 401). Existing installs from before the hardening (root/root): put `DB_ROOT_PASS=root` and your original `KG_JWT_SECRET` in `.env`; tested, data and migrations carry over.
 
 **Run it yourself, without Docker for the server.** Zero needs [Bun](https://bun.sh), a SurrealDB instance and an embedding provider:
 

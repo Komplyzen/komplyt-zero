@@ -2,17 +2,19 @@
 # Used by docker-compose.yml (`migrate` service): apply database/migrations/*.surql, in filename
 # order, to a self-hosted SurrealDB, skipping files already recorded in `_migrations` (a table
 # the baseline defines). POSIX sh: it runs in the curl image.
-# Env: SURREAL_HTTP, KG_DB_NS, KG_DB_NAME. Credentials are the compose defaults (root/root).
+# Env: SURREAL_HTTP, KG_DB_NS, KG_DB_NAME, SURREAL_USER, SURREAL_PASS (the compose DB_ROOT_PASS).
 set -eu
 
 HTTP="${SURREAL_HTTP:?}"
 NS="${KG_DB_NS:?}"
 DB="${KG_DB_NAME:?}"
 DIR="${MIGRATIONS_DIR:-/migrations}"
+USER_="${SURREAL_USER:?}"
+PASS_="${SURREAL_PASS:?}"
 
 # -w puts the HTTP status on its own last line: SurrealDB answers a SQL parse error with HTTP 400 and no
 # "status":"ERR" in the body, so fail_on_err has to look at the status as well.
-post() { curl -sS --retry 5 --retry-connrefused --retry-delay 1 -X POST "$HTTP/sql" -u root:root \
+post() { curl -sS --retry 5 --retry-connrefused --retry-delay 1 -X POST "$HTTP/sql" -u "$USER_:$PASS_" \
   -H "Accept: application/json" -w '\n%{http_code}' "$@"; }
 scoped() { post -H "surreal-ns: $NS" -H "surreal-db: $DB" "$@"; }
 fail_on_err() { # label response-with-trailing-http-status-line
@@ -20,6 +22,9 @@ fail_on_err() { # label response-with-trailing-http-status-line
   body=$(printf '%s\n' "$2" | sed '$d')
   if [ -z "$body" ] || [ "$code" != 200 ] || printf '%s' "$body" | grep -q '"status":"ERR"'; then
     echo "[migrate] $1 failed (HTTP $code): $(printf '%s' "$body" | cut -c1-400)" >&2
+    if [ "$code" = 401 ]; then
+      echo "[migrate] DB_ROOT_PASS does not match the one this database was created with (SurrealDB keeps the first). Use the original value, or remove the surreal-data volume for a fresh install." >&2
+    fi
     exit 1
   fi
 }

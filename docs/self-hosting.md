@@ -99,6 +99,22 @@ The code in `src/ee/` is under the PolyForm Noncommercial License 1.0.0, or a co
 
 `src/Dockerfile` copies `src/ee/`, so a container build without it needs that line removed.
 
+## The compose quickstart
+
+`docker-compose.yml` is a quickstart for one person on one machine, not a production deployment: local auth mode (no tokens), one unreplicated SurrealDB, no backups, no TLS. For anything shared or long-lived use the steps above with your own SurrealDB, issuer and secrets management. Existing installs from before the hardening (root/root): put `DB_ROOT_PASS=root` and your original `KG_JWT_SECRET` in `.env`; tested, data and migrations carry over.
+
+### Secrets
+
+`docker-compose.yml` needs `KG_JWT_SECRET` and `DB_ROOT_PASS` (both `openssl rand -hex 32`). They are ordinary environment variables of the containers, so anyone who can talk to the Docker daemon can read them with `docker inspect`. SurrealDB takes its root password only from `--pass` or `SURREAL_PASS`, with no password-file option, and its image has no shell to wrap that, so this can't be avoided. SurrealDB keeps the first `DB_ROOT_PASS` in its data volume: keep the value in a `.env` next to the compose file (the README command creates it once; compose reads it automatically). Losing or regenerating either value breaks the next start: `kg` crash-loops because the hash of `KG_JWT_SECRET` is not in `kg_config:signin` (see [signin-secret.md](signin-secret.md)), and `migrate` fails with a 401 because the database kept the first `DB_ROOT_PASS`. To change it later, remove the `surreal-data` volume or change the root user inside SurrealDB.
+
+### Containers
+
+The `kg` container runs as the unprivileged `bun` user and SurrealDB as its `nonroot` user (uid 65532; the one-shot `surreal-init` service chowns the data volume once). Every service drops all Linux capabilities and cannot gain privileges, `kg` has a read-only root filesystem (`/tmp` is a tmpfs), and `kg` and SurrealDB have memory and process limits (raise `mem_limit` for a very large graph; Ollama has a process limit only, since model size varies). Ollama still runs as root, as its upstream image requires.
+
+Services sit on an internal `backend` network with no route out. Only `kg` is also on a `frontend` network, which publishes `127.0.0.1:3000` and gives `kg` outbound access (for a hosted embedding provider); only Ollama has an `egress` network, for the model download. If something on your machine already uses port 3000, `kg` stays in "Created" with "address already in use": publish another host port with a compose override (`ports: !override ["127.0.0.1:3100:3000"]`).
+
+Compose images are pinned by tag and digest. `scripts/compose-smoke.sh` (the `container` job in CI) starts SurrealDB and `kg` with fixture embeddings, so no model download, and checks the non-root users, dropped capabilities, the internal network, one MCP call and a second start. Run it locally with Docker and the Compose plugin.
+
 ## The stdio server
 
 `kg mcp` (`src/bin/mcp.ts`) is a stdio MCP server that talks to SurrealDB directly and reads the same `EMBEDDING_*` settings as the HTTP server. With `KG_AUTH_MODE=local` it skips `kg auth login` and acts as the same fixed local user as the HTTP server. Without it, it expects credentials from the hosted service's login flow, which is not a self-hosting route.

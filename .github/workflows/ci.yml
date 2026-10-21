@@ -133,6 +133,22 @@ jobs:
       - name: Run all suites against SurrealDB
         run: bun run test:run
 
+  container:
+    # The compose stack and the image stay unprivileged: hadolint on the Dockerfile, then
+    # scripts/compose-smoke.sh boots the stack (fixture embeddings, no model download) and
+    # asserts non-root users, dropped capabilities, the internal network and one MCP call.
+    # Secretless, so it runs on fork PRs.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Lint the Dockerfile
+        run: |
+          docker run --rm -i hadolint/hadolint:v2.12.0@sha256:30a8fd2e785ab6176eed53f74769e04f125afb2f74a6c52aef7d463583b6d45e \
+            hadolint --failure-threshold warning - < src/Dockerfile
+      - name: Compose smoke test
+        run: scripts/compose-smoke.sh
+
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 10

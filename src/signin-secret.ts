@@ -103,7 +103,8 @@ async function publishOnce(db: Surreal, ownHash: string): Promise<void> {
   // with DB credentials and a stale or wrong secret must not self-allowlist.
   throw new SigninSecretNotAcceptedError(
     'KG_JWT_SECRET hash is not in kg_config:signin.signin_sha256s. ' +
-      'Add it via the rotation steps in docs/signin-secret.md before this server can sign in.'
+      'Add it via the rotation steps in docs/signin-secret.md before this server can sign in. ' +
+      'A secret generated per run causes this; keep it fixed (compose: `.env`, see docs/self-hosting.md#secrets).'
   );
 }
 

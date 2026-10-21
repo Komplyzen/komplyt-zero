@@ -35,4 +35,7 @@ LABEL org.opencontainers.image.licenses="Apache-2.0 AND (PolyForm-Noncommercial-
 ENV NODE_ENV=production
 EXPOSE 3000
 
+# Unprivileged user shipped with the bun image (uid 1000). The app code stays root-owned and read-only to it.
+USER bun
+
 CMD ["bun", "run", "dist/index.js"]
