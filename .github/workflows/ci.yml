@@ -67,6 +67,30 @@ jobs:
             exit 1
           fi
 
+      - name: Installed package loads (tarball, no devDependencies)
+        # What `npx @komplyzen/komplyt-zero mcp` does for a user: the packed tarball, runtime
+        # dependencies only. Catches devDependencies leaking into the runtime path (#21). No DB is
+        # reachable, so this checks that the logger and imports come up, not an MCP exchange.
+        env:
+          KG_DB_URL: ws://127.0.0.1:1
+          KG_DB_USER: ci
+          KG_DB_PASS: ci
+          KG_JWT_SECRET: ci-only-secret-at-least-32-characters-long
+          EMBEDDING_PROVIDER: fixture
+          KG_AUTH_MODE: local
+        run: |
+          tgz=$(npm pack --silent --pack-destination "$RUNNER_TEMP" | tail -n 1)
+          mkdir "$RUNNER_TEMP/user-install" && cd "$RUNNER_TEMP/user-install"
+          npm init -y >/dev/null
+          npm install --omit=dev --no-audit --no-fund "$RUNNER_TEMP/$tgz"
+          set +e
+          out=$(timeout 15 node node_modules/@komplyzen/komplyt-zero/dist/bin/kg.js mcp </dev/null 2>&1)
+          echo "$out"
+          if echo "$out" | grep -Eq "unable to determine transport target|ERR_MODULE_NOT_FOUND|Cannot find (module|package)|SyntaxError|ERR_DLOPEN_FAILED"; then
+            echo "installed package failed to load" >&2
+            exit 1
+          fi
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10

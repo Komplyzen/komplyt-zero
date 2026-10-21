@@ -308,6 +308,7 @@ Batch related lookups into a single `db.query()` call (multiple statements, one 
 | `KG_SESSION_PRUNE_INTERVAL_MINUTES` | `60` | How often the pruner runs |
 | `METRICS_TOKEN` | unset | Bearer token (min 16 chars) required on `/metrics` and `/pool-metrics`; absent = open |
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` |
+| `LOG_PRETTY` | unset | `1`/`true`/`on` pretty-prints logs (needs the `pino-pretty` devDependency; `NODE_ENV=development` does the same). Default: JSON lines |
 | `LOGTAIL_TOKEN` | unset | Better Stack log shipping (optional) |
 | `DEV_SURFACE_ERRORS` | `false` | Surface real error details in JSON-RPC responses |
 | `KG_REQUIRE_EE` | `false` | Refuse to start without `src/ee/` (set in hosted deploys) |
