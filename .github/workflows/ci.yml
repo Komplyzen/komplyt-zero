@@ -130,6 +130,35 @@ jobs:
       - name: Apply the migration chain
         working-directory: .
         run: scripts/apply-migrations.sh
+      - name: Tracked runner is idempotent (second run applies nothing)
+        working-directory: .
+        env:
+          SURREAL_HTTP: http://127.0.0.1:8000
+          SURREAL_USER: root
+          SURREAL_PASS: root
+          KG_DB_NAME: runner
+        run: |
+          scripts/migrate.sh
+          second=$(scripts/migrate.sh 2>&1)
+          echo "$second"
+          ! echo "$second" | grep -q "applying"
+      - name: A file that fails halfway leaves nothing behind and is retried (#20)
+        working-directory: .
+        env:
+          SURREAL_HTTP: http://127.0.0.1:8000
+          SURREAL_USER: root
+          SURREAL_PASS: root
+          KG_DB_NAME: runner_fail
+        run: |
+          dir=$(mktemp -d)
+          cp database/migrations/000_baseline.surql "$dir/"
+          printf 'DEFINE TABLE half SCHEMALESS;\nTHROW "boom";\n' > "$dir/050_bad.surql"
+          ! MIGRATIONS_DIR="$dir" scripts/migrate.sh
+          printf 'DEFINE TABLE half SCHEMALESS;\n' > "$dir/050_bad.surql"
+          out=$(MIGRATIONS_DIR="$dir" scripts/migrate.sh 2>&1)
+          echo "$out"
+          echo "$out" | grep -q "applying 050_bad.surql"
+          ! echo "$out" | grep -q "applying 000_baseline"
       - name: Run all suites against SurrealDB
         run: bun run test:run
 

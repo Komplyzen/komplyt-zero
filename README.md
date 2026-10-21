@@ -94,7 +94,7 @@ git clone https://github.com/Komplyzen/komplyt-zero.git
 cd komplyt-zero/src
 bun install
 ../scripts/local-db.sh up        # SurrealDB v3.2.4 in Docker, prints the KG_DB_* values
-# apply database/migrations/*.surql in filename order (see docs/self-hosting.md)
+SURREAL_HTTP=http://127.0.0.1:8000 SURREAL_USER=root SURREAL_PASS=root KG_DB_NAME=local ../scripts/migrate.sh
 cp .env.example .env             # fill in the values. For single-user use: set KG_AUTH_MODE=local and
                                  # comment out KOMPLYT_JWKS_URL and KOMPLYT_ISSUER (local mode refuses to start with them)
 bun index.ts

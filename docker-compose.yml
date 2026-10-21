@@ -83,7 +83,7 @@ services:
     restart: "no"
 
   # One-shot: creates the namespace/database and applies database/migrations/*.surql in order.
-  # Skips everything when the baseline is already there (the baseline is not re-runnable).
+  # Files already recorded in _migrations are skipped; each file runs in a transaction (scripts/migrate.sh).
   migrate:
     <<: *hardened
     networks: [backend]
@@ -93,14 +93,16 @@ services:
         condition: service_healthy
     volumes:
       - ./database/migrations:/migrations:ro
-      - ./scripts/compose-migrate.sh:/compose-migrate.sh:ro
+      - ./scripts/migrate.sh:/migrate.sh:ro
     environment:
       SURREAL_HTTP: http://surrealdb:8000
       KG_DB_NS: kg
       KG_DB_NAME: main
+      MIGRATIONS_DIR: /migrations
+      MIGRATED_BY: compose
       SURREAL_USER: root
       SURREAL_PASS: ${DB_ROOT_PASS:?set DB_ROOT_PASS to a random secret, e.g. DB_ROOT_PASS=$(openssl rand -hex 32)}
-    entrypoint: ["/bin/sh", "/compose-migrate.sh"]
+    entrypoint: ["/bin/sh", "/migrate.sh"]
     restart: "no"
 
   ollama:

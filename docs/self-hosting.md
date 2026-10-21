@@ -49,16 +49,16 @@ For anything you intend to keep, run SurrealDB the way you run your other databa
 
 ## 2. Apply the schema
 
-The schema is defined only by the migrations in `database/migrations/`. Apply every file in filename order, with whatever tool you prefer. With curl against the local instance:
+The schema is defined only by the migrations in `database/migrations/`. `scripts/migrate.sh` applies them in filename order and records each one in the `_migrations` table, so it is safe to run again: files already recorded are skipped. Against the local instance from step 1:
 
 ```bash
-for f in ../database/migrations/*.surql; do
-  curl -s -X POST http://127.0.0.1:8000/sql -u root:root -H "Accept: application/json" \
-    -H "surreal-ns: kg" -H "surreal-db: local" --data-binary @"$f" > /dev/null
-done
+SURREAL_HTTP=http://127.0.0.1:8000 SURREAL_USER=root SURREAL_PASS=root KG_DB_NAME=local \
+  ../scripts/migrate.sh
 ```
 
-Apply new migrations the same way when you upgrade. They are written to be applied once each, in order.
+It needs `curl` and a POSIX shell. `KG_DB_NS` defaults to `kg`. Run the same command again after every upgrade; it applies only the new files. Each file runs together with its `_migrations` row in one transaction, so a file that fails halfway changes nothing and the next run retries it. If a recorded file's checksum no longer matches the file on disk, the script warns (migrations are never edited, so that means the wrong checkout). The docker-compose stack runs this script in its `migrate` service.
+
+A database that a failed run of the older compose runner left half-migrated has to be recreated (remove the volume); with this script that state cannot arise.
 
 ## 3. Configure
 
