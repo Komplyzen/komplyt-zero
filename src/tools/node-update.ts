@@ -18,28 +18,30 @@ import { childLogger } from '../logger.js';
 
 const logger = childLogger('node-update');
 
+/** The first field present decides why the node is reactivated. */
+const ACTIVATION_REASONS = [
+  ['content', 'content_update'],
+  ['status', 'status_update'],
+  ['tags', 'tags_update'],
+] as const;
+
+/** Columns copied straight from the params when present. The names are fixed, never user input. */
+const PLAIN_COLUMNS = ['status', 'content', 'tags'] as const;
+
 function activationReason(params: NodeUpdateParams): string {
-  if (params.content) return 'content_update';
-  if (params.status) return 'status_update';
-  if (params.tags) return 'tags_update';
-  return 'update';
+  return ACTIVATION_REASONS.find(([field]) => params[field])?.[1] ?? 'update';
 }
 
-/** Column -> new value for what this call changes. The keys are fixed column names, never user input. */
+/** Column -> new value for what this call changes. */
 function collectChanges(
   params: NodeUpdateParams,
   embedding: number[] | null,
   embeddingModel: string
 ): Record<string, unknown> {
-  const changes: Record<string, unknown> = {};
-  if (params.status) changes.status = params.status;
-  if (params.content) changes.content = params.content;
-  if (embedding) {
-    changes.embedding = embedding;
-    changes.embedding_model = embeddingModel;
-  }
-  if (params.tags) changes.tags = params.tags;
-  return changes;
+  return {
+    ...Object.fromEntries(PLAIN_COLUMNS.filter((column) => params[column]).map((column) => [column, params[column]])),
+    ...(embedding && { embedding, embedding_model: embeddingModel }),
+  };
 }
 
 async function updateNode(

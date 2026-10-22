@@ -114,6 +114,24 @@ function jsonRpcError(id: string | number | null, code: number, message: string,
   return { jsonrpc: '2.0', id, error: { code, message, ...(data !== undefined && { data }) } };
 }
 
+function rpcResult(id: string | number | null, result: unknown): JsonRpcResponse {
+  return { jsonrpc: '2.0', id, result };
+}
+
+/** A tool-level failure: a successful JSON-RPC response whose result is flagged isError. */
+function toolFailure(id: string | number | null, text: string): JsonRpcResponse {
+  return rpcResult(id, { content: [{ type: 'text', text }], isError: true });
+}
+
+interface RpcCall {
+  id: string | number | null;
+  params: Record<string, unknown> | undefined;
+  claims: KgTokenPayload;
+  abortSignal: AbortSignal | undefined;
+}
+
+type MethodHandler = (call: RpcCall) => Promise<JsonRpcResponse>;
+
 async function resolveCurrentSession(db: KgDbClient, tenantId: string): Promise<string | null> {
   // CRITICAL: Filter by tenant to prevent cross-tenant session resolution
   // (resolveActiveSession's query already enforces this; kept as an
@@ -155,6 +173,78 @@ export function createMcpRoutes(deps: {
     }
     return cached;
   }
+
+  const initialize: MethodHandler = async ({ id, params }) =>
+    rpcResult(id, {
+      protocolVersion: negotiateVersion(params?.protocolVersion),
+      serverInfo: {
+        name: env.MCP_SERVER_NAME,
+        title: 'Komplyt Zero',
+        version: packageJson.version,
+        iconUrl: env.KG_PUBLIC_URL ? `${env.KG_PUBLIC_URL}/icon.png` : undefined,
+      },
+      capabilities: { tools: {} },
+      instructions: MCP_INSTRUCTIONS,
+    });
+
+  const ping: MethodHandler = async ({ id }) => rpcResult(id, {});
+
+  const listTools: MethodHandler = async ({ id, params }) => {
+    // The list is not paginated, so no cursor can be valid (spec: invalid cursor = -32602).
+    if (params?.cursor !== undefined) return jsonRpcError(id, -32602, 'Invalid params: invalid cursor');
+    return rpcResult(id, {
+      tools: toolRegistry.list().map((t) => ({
+        name: t.name,
+        title: t.annotations?.title,
+        description: t.description,
+        inputSchema: getToolJsonSchema(t),
+        annotations: t.annotations,
+      })),
+    });
+  };
+
+  const callTool: MethodHandler = async ({ id, params, claims, abortSignal }) => {
+    const name = params?.name;
+    if (typeof name !== 'string') return jsonRpcError(id, -32602, 'Invalid params: name required');
+
+    // Old names stay callable (never listed) until LEGACY_TOOLS_UNTIL: see tools/legacy.ts
+    const tool = toolRegistry.get(name as ToolName) ?? getLegacyTool(name);
+    if (!tool) return toolFailure(id, `Unknown tool: ${name}`);
+
+    try {
+      requireScope(tool.requiredScope, claims);
+    } catch (err) {
+      if (err instanceof AuthError) return toolFailure(id, err.message);
+      throw err;
+    }
+
+    const parsed = tool.inputSchema.safeParse(params?.arguments ?? {});
+    if (!parsed.success) {
+      const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return jsonRpcError(id, -32602, `Invalid params: ${issues}`);
+    }
+
+    const db = await dbFactory.createScoped(claims, abortSignal);
+    try {
+      const ctx: ToolContext = {
+        claims,
+        tenantId: claims.tenantId,
+        projects: claims.projects,
+        scope: claims.scope,
+        currentSession: await resolveCurrentSession(db, claims.tenantId),
+      };
+      return rpcResult(id, await tool.execute(db, embed, ctx, parsed.data));
+    } finally {
+      await (db.release ? db.release() : db.close()).catch(() => {});
+    }
+  };
+
+  const methods = new Map<string, MethodHandler>([
+    ['initialize', initialize],
+    ['ping', ping],
+    ['tools/list', listTools],
+    ['tools/call', callTool],
+  ]);
 
   routes.get('/', (c) => {
     c.res.headers.set('Allow', 'POST');
@@ -243,146 +333,22 @@ export function createMcpRoutes(deps: {
 
     const requestId = body.id ?? null;
 
+    const handler = methods.get(body.method);
     let response: JsonRpcResponse;
-    let db: KgDbClient | null = null;
-
     try {
-      switch (body.method) {
-        case 'initialize': {
-          const params = body.params as { protocolVersion?: unknown } | undefined;
-          const negotiatedVersion = negotiateVersion(params?.protocolVersion);
-
-          response = {
-            jsonrpc: '2.0',
+      response = handler
+        ? await handler({
             id: requestId,
-            result: {
-              protocolVersion: negotiatedVersion,
-              serverInfo: {
-                name: env.MCP_SERVER_NAME,
-                title: 'Komplyt Zero',
-                version: packageJson.version,
-                iconUrl: env.KG_PUBLIC_URL ? `${env.KG_PUBLIC_URL}/icon.png` : undefined,
-              },
-              capabilities: { tools: {} },
-              instructions: MCP_INSTRUCTIONS,
-            },
-          };
-          break;
-        }
-
-        case 'ping':
-          response = { jsonrpc: '2.0', id: requestId, result: {} };
-          break;
-
-        case 'tools/list': {
-          // The list is not paginated, so no cursor can be valid (spec: invalid cursor = -32602).
-          const listParams = body.params as { cursor?: unknown } | undefined;
-          if (listParams?.cursor !== undefined) {
-            response = jsonRpcError(requestId, -32602, 'Invalid params: invalid cursor');
-            break;
-          }
-          response = {
-            jsonrpc: '2.0',
-            id: requestId,
-            result: {
-              tools: toolRegistry.list().map((t) => ({
-                name: t.name,
-                title: t.annotations?.title,
-                description: t.description,
-                inputSchema: getToolJsonSchema(t),
-                annotations: t.annotations,
-              })),
-            },
-          };
-          break;
-        }
-
-        case 'tools/call': {
-          const params = body.params as { name: string; arguments?: Record<string, unknown> } | undefined;
-          if (!params || typeof params.name !== 'string') {
-            response = jsonRpcError(requestId, -32602, 'Invalid params: name required');
-            break;
-          }
-
-          // Old names stay callable (never listed) until LEGACY_TOOLS_UNTIL: see tools/legacy.ts
-          const tool = toolRegistry.get(params.name as ToolName) ?? getLegacyTool(params.name);
-
-          if (!tool) {
-            response = {
-              jsonrpc: '2.0',
-              id: requestId,
-              result: {
-                content: [{ type: 'text', text: `Unknown tool: ${params.name}` }],
-                isError: true,
-              },
-            };
-            break;
-          }
-
-          try {
-            requireScope(tool.requiredScope, claims);
-          } catch (err) {
-            if (err instanceof AuthError) {
-              response = {
-                jsonrpc: '2.0',
-                id: requestId,
-                result: {
-                  content: [{ type: 'text', text: err.message }],
-                  isError: true,
-                },
-              };
-              break;
-            }
-            throw err;
-          }
-
-          const parseResult = tool.inputSchema.safeParse(params.arguments ?? {});
-          if (!parseResult.success) {
-            const issues = parseResult.error.issues
-              .map((i) => `${i.path.join('.')}: ${i.message}`)
-              .join('; ');
-            response = jsonRpcError(requestId, -32602, `Invalid params: ${issues}`);
-            break;
-          }
-
-          const abortSignal = c.get('abortSignal') as AbortSignal | undefined;
-          db = await dbFactory.createScoped(claims, abortSignal);
-          const currentSession = await resolveCurrentSession(db, claims.tenantId);
-
-          const ctx: ToolContext = {
+            params: body.params,
             claims,
-            tenantId: claims.tenantId,
-            projects: claims.projects,
-            scope: claims.scope,
-            currentSession,
-          };
-
-          const result = await tool.execute(db, embed, ctx, parseResult.data);
-
-          response = {
-            jsonrpc: '2.0',
-            id: requestId,
-            result,
-          };
-          break;
-        }
-
-        default:
-          response = jsonRpcError(requestId, -32601, `Method not found: ${body.method}`);
-      }
+            abortSignal: c.get('abortSignal') as AbortSignal | undefined,
+          })
+        : jsonRpcError(requestId, -32601, `Method not found: ${body.method}`);
     } catch (err) {
       logger.error({ err, method: body.method }, 'MCP request failed');
       const errMessage = err instanceof Error ? err.message : String(err);
       // Surface actual error in DEV mode for debugging
-      if (env.DEV_SURFACE_ERRORS) {
-        response = jsonRpcError(requestId, -32603, errMessage);
-      } else {
-        response = jsonRpcError(requestId, -32603, 'Internal error');
-      }
-    } finally {
-      if (db) {
-        await (db.release ? db.release() : db.close()).catch(() => {});
-      }
+      response = jsonRpcError(requestId, -32603, env.DEV_SURFACE_ERRORS ? errMessage : 'Internal error');
     }
 
     // Check if client prefers SSE (MCP Streamable HTTP transport)
