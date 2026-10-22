@@ -24,7 +24,7 @@ vi.mock('../env.js', () => ({
   getEnv: () => ({}),
 }));
 
-import { executeStdioToolCall, type StdioToolCallDeps } from './stdio-tool-call.js';
+import { executeStdioToolCall, rejectBeforeStartup, type StdioToolCallDeps } from './stdio-tool-call.js';
 import { queryParamsSchema, type KgTokenPayload, type ToolHandler, type ToolResult } from '../contracts.js';
 
 const claims: KgTokenPayload = {
@@ -168,3 +168,25 @@ describe('executeStdioToolCall', () => {
     expect(res.sessionId).toBe('session:keep');
   });
 });
+
+describe('rejectBeforeStartup', () => {
+  const registry = depsWith([fakeTool('kg_query', {})]).registry;
+
+  it('rejects an unknown tool without needing claims or a database', () => {
+    const res = rejectBeforeStartup(registry, 'kg_nope', {}, 'session:s1');
+    expect(res?.isError).toBe(true);
+    expect(res?.content[0].text).toBe('Unknown tool: kg_nope');
+    expect(res?.sessionId).toBe('session:s1');
+  });
+
+  it('rejects invalid arguments naming the field', () => {
+    const res = rejectBeforeStartup(registry, 'kg_query', { limit: 'many' }, null);
+    expect(res?.isError).toBe(true);
+    expect(res?.content[0].text).toMatch(/^Invalid params: .*limit/);
+  });
+
+  it('lets a valid call through', () => {
+    expect(rejectBeforeStartup(registry, 'kg_query', {}, null)).toBeNull();
+  });
+});
+

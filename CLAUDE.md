@@ -59,7 +59,7 @@ The server is a composition of focused modules:
 - `db.ts` — SurrealDB connection factory, tenant-scoped client (`KgDbClient`)
 - `tools/` — MCP tool implementations (one file per tool)
 - `embed-registry.ts` — embedding provider metadata (settings read and required, default model, dimensions, maxBatch); no I/O
-- `embed.ts` — embedding adapters (Cohere, Ollama, fixture), batching wrapper, boot dimension check (Ollama probe: 5 attempts of at most 10s, 1/2/3/4s apart, so at most 60s before the process exits). New provider = one adapter here + one entry in `embed-registry.ts`
+- `embed.ts` — embedding adapters (Cohere, Ollama, fixture), batching wrapper, boot dimension check (Ollama probe: 5 attempts of at most 10s, 1/2/3/4s apart, so at most 60s before the HTTP server exits; the stdio server runs it in the background and reports a failure on tool calls). New provider = one adapter here + one entry in `embed-registry.ts`
 - `activation.ts` — decay/activation scoring logic
 - `session-prune.ts` — background pruner for `kg_auth_session` rows; nothing may hold a scoped connection longer than the retention window (the stdio CLI signs in per call over the pool for this reason; `db.ts` / `pool.ts` clients throw `ScopedSessionExpiredError` past it). Runs on a timer inside the server: on serverless platforms use CPU-always-allocated (or watch `kg_session_prune_last_success_timestamp_seconds` and `kg_session_rows`), because request-only CPU throttles timers on idle instances
 - `secret-guard.ts` — `bearerGuard` for operational endpoints (`/metrics`, `/pool-metrics` when `METRICS_TOKEN` is set)
@@ -181,6 +181,8 @@ src/
 ├── index.ts          # HTTP server entrypoint (Hono routes, middleware)
 ├── http-errors.ts    # Global HTTP error handler (AuthError, back-pressure, HTTPException → error body)
 ├── mcp.ts             # MCP protocol handling (routes shared by HTTP + stdio transports)
+├── tool-list.ts          # tools/list entries (JSON Schema, title, annotations), shared by HTTP and stdio
+├── server-info.ts         # initialize serverInfo (name, title, package.json version), shared by HTTP and stdio
 ├── contracts.ts        # Zod schemas, shared types, ToolHandler interface, tool result helpers
 ├── db.ts               # SurrealDB connection factory, tenant-scoped KgDbClient
 ├── embed-registry.ts    # Embedding provider metadata (reads, requires, default model, dimensions, maxBatch)
@@ -216,6 +218,8 @@ src/
 │   ├── kg.ts           # CLI entrypoint (auth / mcp subcommands)
 │   ├── mcp.ts           # Local stdio MCP server
 │   ├── stdio-claims.ts   # Who the CLI acts as: the local identity (local mode) or the `kg auth login` credentials
+│   ├── stdio-startup.ts   # Single-flight background startup of the stdio server, with the wait cap and the failure cooldown
+│   ├── stdio-lifecycle.ts # In-flight request tracking, so a closing stdin waits for the replies
 │   ├── auth.ts            # OAuth login CLI (browser + PKCE, credentials cached via keytar)
 │   ├── reembed.ts           # Admin: re-embed nodes missing a vector or embedded by another model
 │   └── reembed-work-list.ts # reembed's node selection (buildWorkList) and --limit parsing

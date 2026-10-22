@@ -119,6 +119,8 @@ Compose images are pinned by tag and digest. `scripts/compose-smoke.sh` (the `co
 
 `kg mcp` (`src/bin/mcp.ts`) is a stdio MCP server that talks to SurrealDB directly and reads the same `EMBEDDING_*` settings as the HTTP server. With `KG_AUTH_MODE=local` it skips `kg auth login` and acts as the same fixed local user as the HTTP server. Without it, it expects credentials from the hosted service's login flow, which is not a self-hosting route.
 
+The stdio server answers `initialize` and `tools/list` straight away and starts the rest (sign-in secret, embedding provider, database check) in the background. A tool call waits up to 10 seconds for it. If the database or the embedding provider is not reachable, the call returns an error that names the cause instead of the process exiting; repeated calls within 30 seconds of a failure get the same error, and the first call after that tries again. It exits when its client closes stdin.
+
 ## Known gaps
 
 These are the rough edges a self-hoster will meet, listed so you can plan around them:

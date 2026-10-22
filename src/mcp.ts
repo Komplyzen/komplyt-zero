@@ -6,12 +6,9 @@ import type { KgTokenPayload, KgDbClient, ToolContext, ToolRegistry, EmbeddingPr
 import { resolveActiveSession } from './tools/session-core.js';
 import { getLegacyTool } from './tools/legacy.js';
 import { env } from './env.js';
-import { createRequire } from 'module';
-import type { z } from 'zod';
+import { listToolEntries } from './tool-list.js';
+import { buildServerInfo } from './server-info.js';
 import { childLogger } from './logger.js';
-
-const require = createRequire(import.meta.url);
-const packageJson = require('./package.json');
 
 const logger = childLogger('mcp');
 
@@ -153,36 +150,10 @@ export function createMcpRoutes(deps: {
   const { dbFactory, embed, toolRegistry } = deps;
   const routes = new Hono<McpRouteEnv>();
 
-  const toolSchemaCache = new Map<string, object>();
-  function getToolJsonSchema(tool: { name: string; inputSchema: z.ZodType }): object {
-    let cached = toolSchemaCache.get(tool.name);
-    if (!cached) {
-      try {
-        // Use Zod 4 native JSON Schema generation
-        // unrepresentable: 'any' handles transforms by outputting {} (matches anything)
-        const rawSchema = tool.inputSchema.toJSONSchema({ unrepresentable: 'any' });
-        // Strip $schema - MCP embeds these, doesn't need the meta reference
-        const schema: Record<string, unknown> = { ...rawSchema };
-        delete schema.$schema;
-        cached = schema;
-      } catch (err) {
-        logger.warn({ tool: tool.name, err }, 'Failed to generate JSON schema, using fallback');
-        cached = { type: 'object', properties: {}, additionalProperties: true };
-      }
-      toolSchemaCache.set(tool.name, cached);
-    }
-    return cached;
-  }
-
   const initialize: MethodHandler = async ({ id, params }) =>
     rpcResult(id, {
       protocolVersion: negotiateVersion(params?.protocolVersion),
-      serverInfo: {
-        name: env.MCP_SERVER_NAME,
-        title: 'Komplyt Zero',
-        version: packageJson.version,
-        iconUrl: env.KG_PUBLIC_URL ? `${env.KG_PUBLIC_URL}/icon.png` : undefined,
-      },
+      serverInfo: buildServerInfo(env.MCP_SERVER_NAME, env.KG_PUBLIC_URL),
       capabilities: { tools: {} },
       instructions: MCP_INSTRUCTIONS,
     });
@@ -193,13 +164,7 @@ export function createMcpRoutes(deps: {
     // The list is not paginated, so no cursor can be valid (spec: invalid cursor = -32602).
     if (params?.cursor !== undefined) return jsonRpcError(id, -32602, 'Invalid params: invalid cursor');
     return rpcResult(id, {
-      tools: toolRegistry.list().map((t) => ({
-        name: t.name,
-        title: t.annotations?.title,
-        description: t.description,
-        inputSchema: getToolJsonSchema(t),
-        annotations: t.annotations,
-      })),
+      tools: listToolEntries(toolRegistry),
     });
   };
 
