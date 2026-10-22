@@ -18,6 +18,32 @@ import { childLogger } from '../logger.js';
 
 const logger = childLogger('node-update');
 
+/** The first field present decides why the node is reactivated. */
+const ACTIVATION_REASONS = [
+  ['content', 'content_update'],
+  ['status', 'status_update'],
+  ['tags', 'tags_update'],
+] as const;
+
+/** Columns copied straight from the params when present. The names are fixed, never user input. */
+const PLAIN_COLUMNS = ['status', 'content', 'tags'] as const;
+
+function activationReason(params: NodeUpdateParams): string {
+  return ACTIVATION_REASONS.find(([field]) => params[field])?.[1] ?? 'update';
+}
+
+/** Column -> new value for what this call changes. */
+function collectChanges(
+  params: NodeUpdateParams,
+  embedding: number[] | null,
+  embeddingModel: string
+): Record<string, unknown> {
+  return {
+    ...Object.fromEntries(PLAIN_COLUMNS.filter((column) => params[column]).map((column) => [column, params[column]])),
+    ...(embedding && { embedding, embedding_model: embeddingModel }),
+  };
+}
+
 async function updateNode(
   db: KgDbClient,
   embed: EmbeddingProvider,
@@ -39,15 +65,6 @@ async function updateNode(
     return toolError('NOT_FOUND', `Node not found: ${params.id}`);
   }
 
-  let reason: string;
-  if (params.content) {
-    reason = 'content_update';
-  } else if (params.status) {
-    reason = 'status_update';
-  } else {
-    reason = 'update';
-  }
-
   // Embed first: a content change whose embedding fails is rejected, so a node never
   // carries a vector that describes its previous content. Nothing has been written yet.
   let newEmbedding: number[] | null = null;
@@ -65,24 +82,14 @@ async function updateNode(
     db,
     nodeId,
     ctx.currentSession,
-    reason
+    activationReason(params)
   );
 
-  const setClauses: string[] = [];
-  if (params.status) setClauses.push('status = $status');
-  if (params.content) setClauses.push('content = $content');
-  if (newEmbedding) setClauses.push('embedding = $embedding', 'embedding_model = $embedding_model');
-
-  if (setClauses.length > 0) {
-    const query = `UPDATE type::record('node', $id) SET ${setClauses.join(', ')} RETURN AFTER`;
-    const queryParams: Record<string, unknown> = { id: nodeId };
-    if (params.status) queryParams.status = params.status;
-    if (params.content) queryParams.content = params.content;
-    if (newEmbedding) {
-      queryParams.embedding = newEmbedding;
-      queryParams.embedding_model = embed.model;
-    }
-    await db.query(query, queryParams);
+  const changes = collectChanges(params, newEmbedding, embed.model);
+  const columns = Object.keys(changes);
+  if (columns.length > 0) {
+    const assignments = columns.map((column) => `${column} = $${column}`).join(', ');
+    await db.query(`UPDATE type::record('node', $id) SET ${assignments} RETURN AFTER`, { id: nodeId, ...changes });
   }
 
   const updated = await db.queryOne<NodeDbRow>(
@@ -104,7 +111,7 @@ async function updateNode(
 
 export const nodeUpdateTool: ToolHandler<NodeUpdateParams> = {
   name: 'kg_node_update',
-  description: 'Update the status or content of an existing knowledge node and reactivate it. Changing content overwrites the previous content and regenerates the embedding; if that fails the update is rejected and the node is unchanged. Requires an active session.',
+  description: 'Update the status, content or tags of an existing knowledge node and reactivate it. Tags replace the whole tag list. Changing content overwrites the previous content and regenerates the embedding; if that fails the update is rejected and the node is unchanged. Requires an active session.',
   inputSchema: nodeUpdateParamsSchema,
   responseSchema: nodeUpdateResponseSchema,
   requiredScope: 'kg:write',
