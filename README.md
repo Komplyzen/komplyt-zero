@@ -123,7 +123,7 @@ The server tells every client how to use it, but a few habits separate a graph t
 | `kg_session_info` | Shows the current session and node counts (read-only) |
 | `kg_status` | Lists open problems and todos, and recent decisions and approaches (read-only) |
 | `kg_node_create` | Records an observation, decision, argument, todo, problem, mitigation, workaround or approach |
-| `kg_node_update` | Changes a node's status or content, and re-activates it |
+| `kg_node_update` | Changes a node's status, content or tags (tags replace the whole list), and re-activates it |
 | `kg_query` | Semantic search with type, status and project filters, plus spreading activation |
 | `kg_relate` | Creates an edge between two nodes, or strengthens an existing one |
 | `kg_meta_model` | Reads the stored methodology, resiliency or process model of a container, project or person (read-only; computed ahead of time, see [docs/meta-model.md](docs/meta-model.md)) |
