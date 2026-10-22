@@ -15,6 +15,7 @@ import type { KgTokenPayload } from '../contracts.js';
 import { pooledDbFactory, gracefulShutdown } from '../pool.js';
 import { createProviderFromEnv } from '../embed.js';
 import { toolRegistry } from '../tools/index.js';
+import { listToolEntries } from '../tool-list.js';
 import { getEnv } from '../env.js';
 import { publishSigninSecret } from '../signin-secret.js';
 import { logLocalModeWarning } from '../auth-local.js';
@@ -157,11 +158,7 @@ async function main() {
   let kgSessionId: string | null = null;
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: toolRegistry.list().map((t) => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: JSON.parse(JSON.stringify(t.inputSchema)) as Record<string, unknown>,
-    })),
+    tools: listToolEntries(toolRegistry),
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
