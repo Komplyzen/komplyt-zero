@@ -16,6 +16,7 @@ import { pooledDbFactory, gracefulShutdown } from '../pool.js';
 import { createProviderFromEnv } from '../embed.js';
 import { toolRegistry } from '../tools/index.js';
 import { listToolEntries } from '../tool-list.js';
+import { buildServerInfo } from '../server-info.js';
 import { getEnv } from '../env.js';
 import { publishSigninSecret } from '../signin-secret.js';
 import { logLocalModeWarning } from '../auth-local.js';
@@ -151,7 +152,7 @@ async function main() {
   process.on('SIGINT', shutdown);
 
   const server = new Server(
-    { name: 'kg-server', version: '1.0.0' },
+    buildServerInfo(env.MCP_SERVER_NAME, env.KG_PUBLIC_URL),
     { capabilities: { tools: {} } },
   );
 

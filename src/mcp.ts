@@ -7,11 +7,8 @@ import { resolveActiveSession } from './tools/session-core.js';
 import { getLegacyTool } from './tools/legacy.js';
 import { env } from './env.js';
 import { listToolEntries } from './tool-list.js';
-import { createRequire } from 'module';
+import { buildServerInfo } from './server-info.js';
 import { childLogger } from './logger.js';
-
-const require = createRequire(import.meta.url);
-const packageJson = require('./package.json');
 
 const logger = childLogger('mcp');
 
@@ -156,12 +153,7 @@ export function createMcpRoutes(deps: {
   const initialize: MethodHandler = async ({ id, params }) =>
     rpcResult(id, {
       protocolVersion: negotiateVersion(params?.protocolVersion),
-      serverInfo: {
-        name: env.MCP_SERVER_NAME,
-        title: 'Komplyt Zero',
-        version: packageJson.version,
-        iconUrl: env.KG_PUBLIC_URL ? `${env.KG_PUBLIC_URL}/icon.png` : undefined,
-      },
+      serverInfo: buildServerInfo(env.MCP_SERVER_NAME, env.KG_PUBLIC_URL),
       capabilities: { tools: {} },
       instructions: MCP_INSTRUCTIONS,
     });
