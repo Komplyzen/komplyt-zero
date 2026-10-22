@@ -545,6 +545,41 @@ describe('MCP Protocol', () => {
       expect(mockDbClient.close).toHaveBeenCalledTimes(1);
     });
 
+    describe('releases the DB connection when the call fails', () => {
+      async function callQuery() {
+        const res = await createTestApp().request('/mcp', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer valid-token', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/call',
+            params: { name: 'kg_query', arguments: {} },
+          }),
+        });
+        return res.json();
+      }
+
+      it('when the tool throws', async () => {
+        (mockTool.execute as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('tool exploded'));
+
+        const body = await callQuery();
+
+        expect(body.error.code).toBe(-32603);
+        expect(mockDbClient.close).toHaveBeenCalledTimes(1);
+      });
+
+      it('when the session lookup throws', async () => {
+        mockDbClient.queryOne.mockRejectedValueOnce(new Error('session lookup failed'));
+
+        const body = await callQuery();
+
+        expect(body.error.code).toBe(-32603);
+        expect(mockTool.execute).not.toHaveBeenCalled();
+        expect(mockDbClient.close).toHaveBeenCalledTimes(1);
+      });
+    });
+
     it('ignores stale Mcp-Session-Id header', async () => {
       const app = createTestApp();
       const res = await app.request('/mcp', {
