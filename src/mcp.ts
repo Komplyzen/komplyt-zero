@@ -259,6 +259,7 @@ export function createMcpRoutes(deps: {
               protocolVersion: negotiatedVersion,
               serverInfo: {
                 name: env.MCP_SERVER_NAME,
+                title: 'Komplyt Zero',
                 version: packageJson.version,
                 iconUrl: env.KG_PUBLIC_URL ? `${env.KG_PUBLIC_URL}/icon.png` : undefined,
               },
@@ -273,13 +274,20 @@ export function createMcpRoutes(deps: {
           response = { jsonrpc: '2.0', id: requestId, result: {} };
           break;
 
-        case 'tools/list':
+        case 'tools/list': {
+          // The list is not paginated, so no cursor can be valid (spec: invalid cursor = -32602).
+          const listParams = body.params as { cursor?: unknown } | undefined;
+          if (listParams?.cursor !== undefined) {
+            response = jsonRpcError(requestId, -32602, 'Invalid params: invalid cursor');
+            break;
+          }
           response = {
             jsonrpc: '2.0',
             id: requestId,
             result: {
               tools: toolRegistry.list().map((t) => ({
                 name: t.name,
+                title: t.annotations?.title,
                 description: t.description,
                 inputSchema: getToolJsonSchema(t),
                 annotations: t.annotations,
@@ -287,6 +295,7 @@ export function createMcpRoutes(deps: {
             },
           };
           break;
+        }
 
         case 'tools/call': {
           const params = body.params as { name: string; arguments?: Record<string, unknown> } | undefined;

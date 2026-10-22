@@ -197,6 +197,33 @@ describe('Tool Consolidation Integration', () => {
       expect(updateData.node.status).toBe('resolved');
     });
 
+    it('kg_node_update replaces tags, clears them with [], and leaves them alone when omitted (KOM-191)', async () => {
+      const ctx = createContext(sessionId);
+      const created = JSON.parse((await nodeCreateTool.execute(client, embed, ctx, {
+        type: 'observation',
+        content: 'Tag update target',
+        tags: ['old', 'keep'],
+      })).content[0].text);
+
+      const retagged = JSON.parse((await nodeUpdateTool.execute(client, embed, ctx, {
+        id: created.id,
+        tags: ['keep', 'new'],
+      })).content[0].text);
+      expect(retagged.node.tags).toEqual(['keep', 'new']);
+
+      const untouched = JSON.parse((await nodeUpdateTool.execute(client, embed, ctx, {
+        id: created.id,
+        status: 'done',
+      })).content[0].text);
+      expect(untouched.node.tags).toEqual(['keep', 'new']);
+
+      const cleared = JSON.parse((await nodeUpdateTool.execute(client, embed, ctx, {
+        id: created.id,
+        tags: [],
+      })).content[0].text);
+      expect(cleared.node.tags ?? []).toEqual([]);
+    });
+
     it('kg_node_update returns NOT_FOUND for an unknown node', async () => {
       const ctx = createContext(sessionId);
       const result = await nodeUpdateTool.execute(client, embed, ctx, {

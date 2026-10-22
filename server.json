@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Komplyzen/komplyt-zero",
   "title": "Komplyt Zero",
-  "description": "Persistent working memory for AI agents: a knowledge graph with semantic search and decay.",
+  "description": "Self-hosted knowledge-graph memory for AI agents on SurrealDB: semantic search and decay.",
   "repository": {
     "url": "https://github.com/Komplyzen/komplyt-zero",
     "source": "github",

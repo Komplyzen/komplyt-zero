@@ -317,6 +317,7 @@ describe('MCP Protocol', () => {
 
       const body = await res.json();
       expect(body.result.serverInfo.name).toBe('komplyt-zero');
+      expect(body.result.serverInfo.title).toBe('Komplyt Zero');
     });
   });
 
@@ -375,6 +376,31 @@ describe('MCP Protocol', () => {
       expect(body.result.tools).toHaveLength(1);
       expect(body.result.tools[0]).toHaveProperty('name', 'kg_query');
       expect(body.result.tools[0]).toHaveProperty('inputSchema');
+    });
+
+    it('gives every tool a top-level display title (from its annotations)', async () => {
+      const app = createTestApp();
+      const res = await app.request('/mcp', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+
+      const body = await res.json();
+      expect(body.result.tools[0].title).toBe('Query Knowledge');
+    });
+
+    it('rejects a cursor with -32602: the list is not paginated, so none is valid', async () => {
+      const app = createTestApp();
+      const res = await app.request('/mcp', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: { cursor: 'bogus' } }),
+      });
+
+      const body = await res.json();
+      expect(body.error.code).toBe(-32602);
+      expect(body.result).toBeUndefined();
     });
 
     it('returns well-formed JSON schema for Claude Code compatibility', async () => {

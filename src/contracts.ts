@@ -444,37 +444,38 @@ const coercibleStringArray = z.union([
 // One tool per operation (OpenAI review rule L17: no action-dispatch tools).
 // Note: author and tenant are derived from JWT, not agent-settable
 export const nodeCreateParamsSchema = z.object({
-  type: NodeType,
-  content: z.string().min(1).refine(s => s.trim().length > 0, 'Content cannot be whitespace-only'),
-  status: Status.optional(),
+  type: NodeType.describe('Kind of knowledge: observation, decision, argument, todo, problem, mitigation, workaround or approach'),
+  content: z.string().min(1).refine(s => s.trim().length > 0, 'Content cannot be whitespace-only').describe('The knowledge to store, as plain text. Embedded for semantic search.'),
+  status: Status.optional().describe('Initial status: open, resolved, blocked or done'),
   relates_to: coercibleStringArray.optional().describe('Node IDs to relate to (max 20)'),
-  project: z.string().optional(),
+  project: z.string().optional().describe('Project name to file the node under (defaults to the session project)'),
   container: z.string().optional().describe('Container ID. If omitted, uses tenant default container.'),
-  tags: coercibleStringArray.optional(),
+  tags: coercibleStringArray.optional().describe('Free-form labels for filtering, as an array of strings'),
 });
 export type NodeCreateParams = z.infer<typeof nodeCreateParamsSchema>;
 
 export const nodeUpdateParamsSchema = z.object({
   id: z.string().min(1).describe('Node ID (e.g., "node:abc123")'),
-  status: Status.optional(),
+  status: Status.optional().describe('New status: open, resolved, blocked or done'),
   content: z.string().optional().describe('Updated content. Regenerates embedding.'),
+  tags: coercibleStringArray.optional().describe('Replaces ALL tags on the node: send the full list you want to keep. An empty array removes every tag; omit to leave tags unchanged.'),
 });
 export type NodeUpdateParams = z.infer<typeof nodeUpdateParamsSchema>;
 
 // --- kg_query (from query.rs:85-104) ---
 export const queryParamsSchema = z.object({
   text: z.string().optional().describe('Semantic search query'),
-  type: NodeType.optional(),
-  status: Status.optional(),
-  project: z.string().optional(),
-  author: z.string().optional(),
-  tenant: z.string().optional(),
+  type: NodeType.optional().describe('Only nodes of this type'),
+  status: Status.optional().describe('Only nodes with this status'),
+  project: z.string().optional().describe('Only nodes in this project'),
+  author: z.string().optional().describe('Only nodes by this author'),
+  tenant: z.string().optional().describe('Only nodes of this tenant (defaults to your own)'),
   include_related: coercibleBool.default(false).describe('Include directly related nodes'),
   spread: coercibleBool.default(true).describe('Enable spreading activation'),
   spread_hops: coercibleInt.pipe(z.number().int().min(1).max(3)).default(2).describe('Hops for spreading (clamped 1-3)'),
   spread_factor: coercibleFloat.pipe(z.number().min(0).max(1)).default(0.5).describe('Decay factor per hop'),
   activation_threshold: coercibleFloat.pipe(z.number().min(0).max(1)).default(0.1).describe('Min activation to include'),
-  limit: coercibleInt.pipe(z.number().int().min(1).max(100)).default(10),
+  limit: coercibleInt.pipe(z.number().int().min(1).max(100)).default(10).describe('Max nodes to return (1-100)'),
   include_edges: coercibleBool.default(true).describe('Include edges between result nodes'),
   include_neighbors: coercibleBool.default(true).describe('Include neighbor references per node'),
   neighbors_limit: coercibleInt.pipe(z.number().int().min(1).max(50)).default(10).describe('Max neighbors per node'),
@@ -484,7 +485,7 @@ export type QueryParams = z.infer<typeof queryParamsSchema>;
 
 // --- kg_relate (from relate.rs:35-39) ---
 export const relateParamsSchema = z.object({
-  from: z.string().describe('Source node ID'),
+  from: z.string().describe('Source node ID (e.g., "node:abc123")'),
   to: z.string().describe('Target node ID'),
 });
 export type RelateParams = z.infer<typeof relateParamsSchema>;
@@ -506,7 +507,7 @@ export type SessionInfoParams = z.infer<typeof sessionInfoParamsSchema>;
 
 // --- kg_status ---
 export const statusParamsSchema = z.object({
-  project: z.string().optional(),
+  project: z.string().optional().describe('Only count and list nodes in this project'),
 });
 export type StatusParams = z.infer<typeof statusParamsSchema>;
 

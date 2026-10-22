@@ -44,6 +44,8 @@ async function updateNode(
     reason = 'content_update';
   } else if (params.status) {
     reason = 'status_update';
+  } else if (params.tags) {
+    reason = 'tags_update';
   } else {
     reason = 'update';
   }
@@ -72,12 +74,14 @@ async function updateNode(
   if (params.status) setClauses.push('status = $status');
   if (params.content) setClauses.push('content = $content');
   if (newEmbedding) setClauses.push('embedding = $embedding', 'embedding_model = $embedding_model');
+  if (params.tags) setClauses.push('tags = $tags');
 
   if (setClauses.length > 0) {
     const query = `UPDATE type::record('node', $id) SET ${setClauses.join(', ')} RETURN AFTER`;
     const queryParams: Record<string, unknown> = { id: nodeId };
     if (params.status) queryParams.status = params.status;
     if (params.content) queryParams.content = params.content;
+    if (params.tags) queryParams.tags = params.tags;
     if (newEmbedding) {
       queryParams.embedding = newEmbedding;
       queryParams.embedding_model = embed.model;
@@ -104,7 +108,7 @@ async function updateNode(
 
 export const nodeUpdateTool: ToolHandler<NodeUpdateParams> = {
   name: 'kg_node_update',
-  description: 'Update the status or content of an existing knowledge node and reactivate it. Changing content overwrites the previous content and regenerates the embedding; if that fails the update is rejected and the node is unchanged. Requires an active session.',
+  description: 'Update the status, content or tags of an existing knowledge node and reactivate it. Tags replace the whole tag list. Changing content overwrites the previous content and regenerates the embedding; if that fails the update is rejected and the node is unchanged. Requires an active session.',
   inputSchema: nodeUpdateParamsSchema,
   responseSchema: nodeUpdateResponseSchema,
   requiredScope: 'kg:write',
