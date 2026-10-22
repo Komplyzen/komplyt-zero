@@ -35,8 +35,29 @@ export interface StdioToolCallResult {
   sessionId: string | null;
 }
 
-function errorResult(text: string, sessionId: string | null): StdioToolCallResult {
+export function errorResult(text: string, sessionId: string | null): StdioToolCallResult {
   return { content: [{ type: 'text', text }], isError: true, sessionId };
+}
+
+/**
+ * The errors that need neither the database nor the caller's claims: an unknown tool and invalid
+ * arguments. Checked before the server waits for its startup. Null when the call may proceed.
+ */
+export function rejectBeforeStartup(
+  registry: StdioToolCallDeps['registry'],
+  name: string,
+  args: unknown,
+  currentSession: string | null
+): StdioToolCallResult | null {
+  const tool = registry.get(name as ToolName) ?? getLegacyTool(name);
+  if (!tool) return errorResult(`Unknown tool: ${name}`, currentSession);
+  const parsed = tool.inputSchema.safeParse(args ?? {});
+  if (parsed.success) return null;
+  return errorResult(`Invalid params: ${issueSummary(parsed.error)}`, currentSession);
+}
+
+function issueSummary(error: { issues: Array<{ path: PropertyKey[]; message: string }> }): string {
+  return error.issues.map((i) => `${i.path.map(String).join('.')}: ${i.message}`).join('; ');
 }
 
 export async function executeStdioToolCall(
@@ -61,10 +82,7 @@ export async function executeStdioToolCall(
 
   const parsed = tool.inputSchema.safeParse(args ?? {});
   if (!parsed.success) {
-    const issues = parsed.error.issues
-      .map((i) => `${i.path.join('.')}: ${i.message}`)
-      .join('; ');
-    return errorResult(`Invalid params: ${issues}`, currentSession);
+    return errorResult(`Invalid params: ${issueSummary(parsed.error)}`, currentSession);
   }
 
   const ctx: ToolContext = {

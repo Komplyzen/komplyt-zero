@@ -20,7 +20,9 @@ import { buildServerInfo } from '../server-info.js';
 import { getEnv } from '../env.js';
 import { publishSigninSecret } from '../signin-secret.js';
 import { logLocalModeWarning } from '../auth-local.js';
-import { executeStdioToolCallScoped } from './stdio-tool-call.js';
+import { executeStdioToolCallScoped, rejectBeforeStartup, errorResult } from './stdio-tool-call.js';
+import { createStartup } from './stdio-startup.js';
+import { trackInFlight } from './stdio-lifecycle.js';
 import { prepareStdioAuth, resolveStdioClaims } from './stdio-claims.js';
 
 const CREDENTIALS_PATH = join(homedir(), '.kg', 'credentials.json');
@@ -123,33 +125,39 @@ async function loadClaimsFromCredentials(): Promise<KgTokenPayload> {
       tier: payload.tier ?? 'free',
     };
   } catch {
-    console.error('Invalid token. Run `kg auth login` again.');
-    process.exit(1);
+    throw new Error('Invalid token. Run `kg auth login` again.');
   }
+}
+
+const SHUTDOWN_GRACE_MS = 2_000;
+/** After stdin closes, requests already received get this long to be answered. */
+const DRAIN_MS = 10_000;
+
+async function exitAfterCleanup(): Promise<never> {
+  await Promise.race([gracefulShutdown(), new Promise((resolve) => setTimeout(resolve, SHUTDOWN_GRACE_MS))]);
+  process.exit(0);
+}
+
+function flushStdout(): Promise<void> {
+  return new Promise((resolve) => process.stdout.write('', () => resolve()));
 }
 
 async function main() {
   const env = getEnv();
-  const claims = await resolveStdioClaims(env, loadClaimsFromCredentials);
 
-  await prepareStdioAuth(env, { warn: logLocalModeWarning, publish: () => publishSigninSecret() });
-
-  // Initialize embedding provider; a dimension mismatch rejects here and
-  // main().catch exits non-zero before the stdio server starts.
-  const embed = await createProviderFromEnv(getEnv());
-
-  // Fail fast on bad credentials or a rejected signin, then release the
-  // session. Each tool call signs in on its own over the pool's shared socket
-  // (see executeStdioToolCallScoped): a held scoped session would outlive its
-  // kg_auth_session row, and a socket per call would pay TCP + TLS every time.
-  await (await pooledDbFactory.createScoped(claims)).close();
-
-  const shutdown = async () => {
-    await gracefulShutdown();
-    process.exit(0);
-  };
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  // Runs in the background: `initialize` and `tools/list` need none of it, and a server without a
+  // reachable database must still answer them (directory scanners, clients with a bad config).
+  // Each tool call signs in on its own over the pool's shared socket (see
+  // executeStdioToolCallScoped): a held scoped session would outlive its kg_auth_session row, and
+  // a socket per call would pay TCP + TLS every time.
+  const startup = createStartup(async () => {
+    const claims = await resolveStdioClaims(env, loadClaimsFromCredentials);
+    await prepareStdioAuth(env, { warn: logLocalModeWarning, publish: () => publishSigninSecret() });
+    const embed = await createProviderFromEnv(getEnv());
+    await (await pooledDbFactory.createScoped(claims)).close();
+    return { claims, embed };
+  });
+  startup.begin();
 
   const server = new Server(
     buildServerInfo(env.MCP_SERVER_NAME, env.KG_PUBLIC_URL),
@@ -164,10 +172,24 @@ async function main() {
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+    const rejected = rejectBeforeStartup(toolRegistry, name, args, kgSessionId);
+    if (rejected) {
+      const { sessionId: _unchanged, ...result } = rejected;
+      return result;
+    }
+
+    let started;
+    try {
+      started = await startup.ready();
+    } catch (err) {
+      const { sessionId: _unchanged, ...result } = errorResult((err as Error).message, kgSessionId);
+      return result;
+    }
+
     // Lookup, scope check, Zod validation, execute, session tracking live in
     // stdio-tool-call.ts so they are unit-tested.
     const { sessionId, ...result } = await executeStdioToolCallScoped(
-      { registry: toolRegistry, dbFactory: pooledDbFactory, embed, claims },
+      { registry: toolRegistry, dbFactory: pooledDbFactory, ...started },
       name,
       args,
       kgSessionId
@@ -178,6 +200,17 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  const inFlight = trackInFlight(transport);
+
+  // The SDK transport ignores a closing stdin, and the pooled socket would keep the process alive
+  // as an orphan: answer what was received, then leave.
+  process.stdin.once('end', async () => {
+    await inFlight.idle(DRAIN_MS);
+    await flushStdout();
+    await exitAfterCleanup();
+  });
+  process.on('SIGTERM', exitAfterCleanup);
+  process.on('SIGINT', exitAfterCleanup);
 }
 
 main().catch((err) => {
