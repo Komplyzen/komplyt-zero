@@ -18,6 +18,30 @@ import { childLogger } from '../logger.js';
 
 const logger = childLogger('node-update');
 
+function activationReason(params: NodeUpdateParams): string {
+  if (params.content) return 'content_update';
+  if (params.status) return 'status_update';
+  if (params.tags) return 'tags_update';
+  return 'update';
+}
+
+/** Column -> new value for what this call changes. The keys are fixed column names, never user input. */
+function collectChanges(
+  params: NodeUpdateParams,
+  embedding: number[] | null,
+  embeddingModel: string
+): Record<string, unknown> {
+  const changes: Record<string, unknown> = {};
+  if (params.status) changes.status = params.status;
+  if (params.content) changes.content = params.content;
+  if (embedding) {
+    changes.embedding = embedding;
+    changes.embedding_model = embeddingModel;
+  }
+  if (params.tags) changes.tags = params.tags;
+  return changes;
+}
+
 async function updateNode(
   db: KgDbClient,
   embed: EmbeddingProvider,
@@ -39,17 +63,6 @@ async function updateNode(
     return toolError('NOT_FOUND', `Node not found: ${params.id}`);
   }
 
-  let reason: string;
-  if (params.content) {
-    reason = 'content_update';
-  } else if (params.status) {
-    reason = 'status_update';
-  } else if (params.tags) {
-    reason = 'tags_update';
-  } else {
-    reason = 'update';
-  }
-
   // Embed first: a content change whose embedding fails is rejected, so a node never
   // carries a vector that describes its previous content. Nothing has been written yet.
   let newEmbedding: number[] | null = null;
@@ -67,26 +80,14 @@ async function updateNode(
     db,
     nodeId,
     ctx.currentSession,
-    reason
+    activationReason(params)
   );
 
-  const setClauses: string[] = [];
-  if (params.status) setClauses.push('status = $status');
-  if (params.content) setClauses.push('content = $content');
-  if (newEmbedding) setClauses.push('embedding = $embedding', 'embedding_model = $embedding_model');
-  if (params.tags) setClauses.push('tags = $tags');
-
-  if (setClauses.length > 0) {
-    const query = `UPDATE type::record('node', $id) SET ${setClauses.join(', ')} RETURN AFTER`;
-    const queryParams: Record<string, unknown> = { id: nodeId };
-    if (params.status) queryParams.status = params.status;
-    if (params.content) queryParams.content = params.content;
-    if (params.tags) queryParams.tags = params.tags;
-    if (newEmbedding) {
-      queryParams.embedding = newEmbedding;
-      queryParams.embedding_model = embed.model;
-    }
-    await db.query(query, queryParams);
+  const changes = collectChanges(params, newEmbedding, embed.model);
+  const columns = Object.keys(changes);
+  if (columns.length > 0) {
+    const assignments = columns.map((column) => `${column} = $${column}`).join(', ');
+    await db.query(`UPDATE type::record('node', $id) SET ${assignments} RETURN AFTER`, { id: nodeId, ...changes });
   }
 
   const updated = await db.queryOne<NodeDbRow>(
