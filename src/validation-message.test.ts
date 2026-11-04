@@ -50,6 +50,11 @@ describe('describeIssues', () => {
     expect(message).toContain('; ');
   });
 
+  it('names the path of a nested unknown key and does not list the top-level keys for it', () => {
+    const nested = z.strictObject({ inner: z.strictObject({ a: z.string() }), top: z.string().optional() });
+    expect(describeIssues(errorOf(nested, { inner: { a: 'x', b: 1 } }), nested)).toBe('inner: Unrecognized key "b"');
+  });
+
   it('prints a root-level issue without an empty path prefix', () => {
     expect(describeIssues(errorOf(z.string(), 5))).toMatch(/^Invalid input/);
   });

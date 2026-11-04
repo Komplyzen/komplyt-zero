@@ -9,6 +9,9 @@
 # trying the API and for tests, not for judging recall. Needs Compose 2.20 or later (`required: false`).
 # EMBEDDING_BASE_URL and EMBEDDING_MODEL stay set in docker-compose.yml; the fixture provider ignores them.
 #
+# If COMPOSE_PROFILES contains `ollama` (or you pass --profile ollama), Ollama starts anyway: unset it for a
+# start without Ollama.
+#
 # The default `docker compose up` (docker-compose.yml alone) is unchanged and still starts Ollama.
 services:
   # A profile that is never enabled keeps both services from starting.

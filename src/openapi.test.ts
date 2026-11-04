@@ -216,6 +216,26 @@ describe('OpenAPI routes: validation', () => {
     expect(calls).toEqual([]);
   });
 
+  it.each(ROUTES)('$method $path rejects an unknown key (every route has its schema in the lookup)', async (route) => {
+    const { app, calls } = makeApp();
+    const res = await send(app, { ...route, body: { ...route.body, not_a_parameter: 1 } });
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error.message).toMatch(/^Unrecognized key "not_a_parameter"/);
+    // kg_session_end and kg_session_info take no parameters, so there is nothing to list.
+    const takesNoParams = route.path === '/session/end' || route.path === '/session/info';
+    expect(error.message.includes('; valid keys: ')).toBe(!takesNoParams);
+    expect(calls).toEqual([]);
+  });
+
+  it('no route path ends with another route path (the schema lookup matches by suffix)', () => {
+    for (const a of ROUTES) {
+      for (const b of ROUTES) {
+        if (a !== b) expect(b.path.endsWith(a.path), `${b.path} ends with ${a.path}`).toBe(false);
+      }
+    }
+  });
+
   it('rejects an unknown body key with 400, naming it and listing the valid keys', async () => {
     const { app, calls } = makeApp();
     const res = await send(app, { method: 'POST', path: '/query', body: { query: 'x' } });

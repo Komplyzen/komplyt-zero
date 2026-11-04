@@ -293,7 +293,17 @@ app.get('/pool-metrics', (c) => {
 // Local mode serves an unauthenticated API: bind to loopback unless the operator says otherwise.
 const listenAddr =
   env.KG_AUTH_MODE === 'local' && !process.env.LISTEN_ADDR ? '127.0.0.1:3000' : env.LISTEN_ADDR;
-const { host, port } = parseListenAddr(listenAddr);
+const parsedListen = (() => {
+  try {
+    return parseListenAddr(listenAddr);
+  } catch (err) {
+    logger.fatal({ err }, 'Invalid LISTEN_ADDR; refusing to start');
+    flushAndExit(1);
+    return undefined;
+  }
+})();
+// Park until the flush-then-exit fires; falling through would start serving on a bad address.
+const { host, port } = parsedListen ?? (await new Promise<never>(() => {}));
 if (env.KG_AUTH_MODE === 'local' && !isLoopbackBind(host)) {
   logger.warn(
     { addr: listenAddr },

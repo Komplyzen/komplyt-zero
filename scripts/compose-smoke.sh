@@ -12,7 +12,7 @@ export COMPOSE_PROJECT_NAME=kg-smoke
 ENV_FILE=$(umask 077; mktemp)
 DB_ROOT_PASS=$(openssl rand -hex 16)
 KG_JWT_SECRET=$(openssl rand -hex 32)
-printf 'KG_JWT_SECRET=%s\nDB_ROOT_PASS=%s\nEMBEDDING_PROVIDER=fixture\n' "$KG_JWT_SECRET" "$DB_ROOT_PASS" > "$ENV_FILE"
+printf 'KG_JWT_SECRET=%s\nDB_ROOT_PASS=%s\n' "$KG_JWT_SECRET" "$DB_ROOT_PASS" > "$ENV_FILE"
 # dc: the stack under test (source build, fixture embeddings). dcf: any other file combination.
 dcf() { docker compose --env-file "$ENV_FILE" "$@"; }
 dc() { dcf -f docker-compose.yml -f docker-compose.build.yml -f docker-compose.fixture.yml "$@"; }
@@ -127,4 +127,10 @@ elapsed=$(( $(date +%s) - started ))
 code=$(docker inspect -f '{{.State.ExitCode}}' "$cid")
 [ "$code" = 0 ] || fail "kg exited with $code after SIGTERM (137 means it had to be killed)"
 [ "$elapsed" -lt 8 ] || fail "kg took ${elapsed}s to stop"
+
+# The image users actually get: the default compose file's published tag, with the fixture override and
+# no source build. It is older than this branch's code, so only the compose wiring is checked (that the
+# current compose file still starts it and it answers), not behaviour added since its release.
+dcf -f docker-compose.yml -f docker-compose.fixture.yml up -d --wait
+mcp kg_status '{}' | grep -q total_nodes || fail "the published image did not answer kg_status"
 echo "compose-smoke: ok"

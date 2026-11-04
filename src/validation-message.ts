@@ -12,13 +12,15 @@ function validKeys(schema: ZodType | undefined): string[] | undefined {
 }
 
 function describeIssue(issue: Issue, schema: ZodType | undefined): string {
+  const path = issue.path.map(String).join('.');
   if (issue.code === 'unrecognized_keys') {
     const names = issue.keys.map((k) => `"${k}"`).join(', ');
+    const noun = `Unrecognized ${issue.keys.length === 1 ? 'key' : 'keys'} ${names}`;
+    // The valid keys are those of the top-level schema: only right when the unknown key sits there.
+    if (path) return `${path}: ${noun}`;
     const valid = validKeys(schema);
-    const hint = valid && valid.length > 0 ? `; valid keys: ${valid.join(', ')}` : '';
-    return `Unrecognized ${issue.keys.length === 1 ? 'key' : 'keys'} ${names}${hint}`;
+    return valid && valid.length > 0 ? `${noun}; valid keys: ${valid.join(', ')}` : noun;
   }
-  const path = issue.path.map(String).join('.');
   return path ? `${path}: ${issue.message}` : issue.message;
 }
 

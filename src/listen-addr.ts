@@ -3,7 +3,8 @@
  * IPv6 hosts must be bracketed; the brackets are not part of the returned host (Bun.serve wants "::").
  * An unusable value throws, so boot stops with a clear message instead of listening on NaN.
  */
-export function parseListenAddr(addr: string): { host: string; port: number } {
+export function parseListenAddr(input: string): { host: string; port: number } {
+  const addr = input.trim();
   let host: string;
   let portStr: string;
 

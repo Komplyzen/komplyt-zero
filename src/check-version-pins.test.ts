@@ -74,6 +74,13 @@ describe('scripts/check-version-pins.sh', () => {
     expect(res.stderr).toContain("no 'surrealdb/surrealdb:v<version>' in docker-compose.yml");
   });
 
+  it('fails when a file it should check has gone missing', () => {
+    rmSync(join(repo, 'bench', 'lib.sh'));
+    const res = check();
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('bench/lib.sh does not exist');
+  });
+
   it('fails when no workflow pins Bun any more (the check cannot pass by finding nothing)', () => {
     put('.github/workflows/ci.yml', '  surrealdb/surrealdb:v3.2.4 start\n');
     const res = check();

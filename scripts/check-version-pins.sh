@@ -29,6 +29,12 @@ check() { # name source-file source-prefix place-prefix place-files...
     status=1
     return
   fi
+  for f in "$@"; do
+    if [ ! -e "$f" ]; then
+      echo "check-version-pins: $name: $f does not exist" >&2
+      status=1
+    fi
+  done
   occurrences "$pprefix" "$@" > "$tmp"
   found=0
   while read -r file line have; do

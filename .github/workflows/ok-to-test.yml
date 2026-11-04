@@ -31,21 +31,28 @@ jobs:
     steps:
       # First, before the App token exists: an author_association of COLLABORATOR also covers outside
       # collaborators with read access, and MEMBER only means org membership. Ask for the real role of
-      # the commenter (not the PR author). Uses the workflow's own token (contents: read includes the
-      # metadata read this endpoint needs); an API error fails the job, so it fails closed.
+      # the commenter (not the PR author). Uses the workflow's own token (this endpoint should need only
+      # repository metadata read; unverified until the first real comment); an API error fails the job, so
+      # it fails closed.
       - name: Commenter has write access
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const login = context.payload.comment.user.login;
-            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              username: login,
-            });
-            const level = data.role_name ?? data.permission;
-            if (!['admin', 'maintain', 'write'].includes(level)) {
-              core.setFailed(`${login} has "${level}" access; /ok-to-test needs write, maintain or admin`);
+            let permission;
+            try {
+              ({ data: { permission } } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: login,
+              }));
+            } catch (err) {
+              core.setFailed(`Could not read the repository permission of ${login} (HTTP ${err.status ?? '?'}): ${err.message}`);
+              return;
+            }
+            // The legacy field: admin, write (also maintain and custom roles built on write), read, none.
+            if (!['admin', 'write'].includes(permission)) {
+              core.setFailed(`${login} has "${permission}" access; /ok-to-test needs write or admin`);
             }
 
       - name: Generate GitHub App token

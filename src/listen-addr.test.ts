@@ -12,6 +12,7 @@ describe('parseListenAddr', () => {
     ['localhost', 'localhost', 3000],
     ['[::1]', '::1', 3000],
     ['localhost:', 'localhost', 3000],
+    [' 127.0.0.1:3000 ', '127.0.0.1', 3000],
   ])('%s -> host %s, port %i', (addr, host, port) => {
     expect(parseListenAddr(addr)).toEqual({ host, port });
   });
