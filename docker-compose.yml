@@ -3,7 +3,16 @@
 # database with no backups, no TLS. See docs/self-hosting.md for a real deployment.
 #
 #   [ -f .env ] || { umask 077; printf 'KG_JWT_SECRET=%s\nDB_ROOT_PASS=%s\n' "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env; }
-#   docker compose up --build
+#   docker compose up
+#
+# The server image is pulled from ghcr.io/komplyzen/komplyt-zero:1.0, the latest 1.0.x release. Unlike every
+# other image below it is not pinned by digest: it floats on the minor tag, so `docker compose pull` brings
+# patch releases. This file on main can be ahead of the released image: a change here that needs a new
+# variable or service is released before it reaches people who pull the image.
+#   Build from source instead (needs more than a 6 GB VM):
+#     docker compose -f docker-compose.yml -f docker-compose.build.yml up --build
+#   Without Ollama (fixture embeddings, no model download; needs Compose 2.20 or later):
+#     docker compose -f docker-compose.yml -f docker-compose.fixture.yml up
 #
 # Compose reads .env from this directory (git-ignored). Keep it: both values are stored in the
 # volumes on first start, and a different one later breaks the start (see docs/self-hosting.md#secrets).
@@ -134,8 +143,7 @@ services:
 
   kg:
     <<: *hardened
-    build:
-      context: ./src
+    image: ghcr.io/komplyzen/komplyt-zero:1.0
     networks: [backend, frontend]
     read_only: true
     tmpfs:

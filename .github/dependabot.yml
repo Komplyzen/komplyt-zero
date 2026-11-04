@@ -28,3 +28,5 @@ updates:
     ignore:
       - dependency-name: surrealdb/surrealdb
         update-types: ['version-update:semver-major']
+      # Our own image: the release checklist in CONTRIBUTING.md moves its tag, not a bot.
+      - dependency-name: ghcr.io/komplyzen/komplyt-zero

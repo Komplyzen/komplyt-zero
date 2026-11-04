@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Smoke test for docker-compose.yml: boots the database and the server (fixture embeddings, so no
-# Ollama and no model download), makes one MCP call, and asserts the container hardening holds.
-# Needs Docker with the Compose plugin. Cleans up after itself. Usage: scripts/compose-smoke.sh
+# Smoke test for docker-compose.yml: boots the database and the server (built from source through
+# docker-compose.build.yml, fixture embeddings through docker-compose.fixture.yml, so no Ollama and no
+# model download), makes MCP calls, and asserts the container hardening holds.
+# Needs Docker with Compose 2.20 or later and jq. Cleans up after itself. Usage: scripts/compose-smoke.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -12,7 +13,9 @@ ENV_FILE=$(umask 077; mktemp)
 DB_ROOT_PASS=$(openssl rand -hex 16)
 KG_JWT_SECRET=$(openssl rand -hex 32)
 printf 'KG_JWT_SECRET=%s\nDB_ROOT_PASS=%s\nEMBEDDING_PROVIDER=fixture\n' "$KG_JWT_SECRET" "$DB_ROOT_PASS" > "$ENV_FILE"
-dc() { docker compose --env-file "$ENV_FILE" "$@"; }
+# dc: the stack under test (source build, fixture embeddings). dcf: any other file combination.
+dcf() { docker compose --env-file "$ENV_FILE" "$@"; }
+dc() { dcf -f docker-compose.yml -f docker-compose.build.yml -f docker-compose.fixture.yml "$@"; }
 
 cleanup() { dc down -v --remove-orphans >/dev/null 2>&1 || true; rm -f "$ENV_FILE"; }
 trap cleanup EXIT
@@ -20,7 +23,33 @@ fail() { echo "compose-smoke: $*" >&2; dc logs --tail 40 >&2 || true; exit 1; }
 
 # Static guard: no hardcoded root credentials. (surreal-init legitimately runs as root to chown the
 # volume; the runtime checks below cover the long-running services.)
-! grep -nE 'root:root|--pass root' docker-compose.yml scripts/migrate.sh || fail "hardcoded root credentials"
+! grep -nE 'root:root|--pass root' docker-compose.yml docker-compose.build.yml docker-compose.fixture.yml scripts/migrate.sh \
+  || fail "hardcoded root credentials"
+
+# The overrides need Compose 2.20 (depends_on.required). Fail early with the reason, not mid-run.
+compose_version=$(docker compose version --short)
+compose_version=${compose_version#v}
+compose_major=${compose_version%%.*}
+compose_rest=${compose_version#*.}
+compose_minor=${compose_rest%%.*}
+{ [ "$compose_major" -gt 2 ] || { [ "$compose_major" -eq 2 ] && [ "$compose_minor" -ge 20 ]; }; } \
+  || fail "Docker Compose $compose_version is too old: docker-compose.fixture.yml needs 2.20 or later (depends_on required: false)"
+
+# Every file combination parses, and the files do what their headers say.
+dcf config -q || fail "docker-compose.yml does not parse"
+dcf -f docker-compose.yml -f docker-compose.build.yml config -q || fail "the build override does not parse"
+dcf -f docker-compose.yml -f docker-compose.fixture.yml config -q || fail "the fixture override does not parse"
+dcf config --format json | jq -e '
+    .services.kg.image == "ghcr.io/komplyzen/komplyt-zero:1.0" and (.services.kg | has("build") | not)
+    and (.services | has("ollama") and has("ollama-pull"))' >/dev/null \
+  || fail "the default compose file must pull the published image and still start ollama"
+dcf -f docker-compose.yml -f docker-compose.build.yml config --format json \
+  | jq -e '.services.kg.build.context != null and .services.kg.image == "kg-zero-kg:local"' >/dev/null \
+  || fail "the build override must build from source under a local tag"
+dcf -f docker-compose.yml -f docker-compose.fixture.yml config --format json | jq -e '
+    .services.kg.depends_on["ollama-pull"].required == false
+    and (.services | has("ollama") or has("ollama-pull") | not)' >/dev/null \
+  || fail "the fixture override must drop ollama and make kg not depend on ollama-pull"
 
 dc up -d --wait surrealdb
 dc run --rm migrate
@@ -80,4 +109,22 @@ kg_logs=$(dc logs kg 2>&1) # captured first: `| grep -q` would SIGPIPE dc under 
 grep -q "docs/self-hosting.md#secrets" <<<"$kg_logs" || fail "the wrong-secret failure has no .env hint"
 sed -i "s/^KG_JWT_SECRET=.*/KG_JWT_SECRET=$KG_JWT_SECRET/" "$ENV_FILE"
 dc up -d --no-deps --wait --force-recreate kg
+
+# The whole dependency graph with the fixture override (no --no-deps): Ollama is never created, and
+# kg still starts. The migrate service runs again here; its output is not asserted.
+dc down
+dc up -d --wait
+services=$(docker ps -a --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" \
+  --format '{{.Label "com.docker.compose.service"}}')
+! grep -qE '^ollama(-pull)?$' <<<"$services" || fail "the fixture override still created ollama containers: $services"
+mcp kg_status '{}' | grep -q total_nodes || fail "kg_status did not answer after the full-graph start"
+
+# `docker stop` sends SIGTERM and kills after 10 s (exit 137). A drained, idle server must exit by itself.
+cid=$(dc ps -q kg)
+started=$(date +%s)
+dc stop kg >/dev/null
+elapsed=$(( $(date +%s) - started ))
+code=$(docker inspect -f '{{.State.ExitCode}}' "$cid")
+[ "$code" = 0 ] || fail "kg exited with $code after SIGTERM (137 means it had to be killed)"
+[ "$elapsed" -lt 8 ] || fail "kg took ${elapsed}s to stop"
 echo "compose-smoke: ok"

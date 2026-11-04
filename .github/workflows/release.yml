@@ -133,8 +133,8 @@ jobs:
     # This job pushes X.Y.Z and X.Y only; `latest` is moved by the `latest` job below.
     needs: publish
     if: github.event_name != 'workflow_dispatch'
-    # Built from src/Dockerfile (the same file docker-compose.yml builds), so the image
-    # contains ee/ under its own licence like the compose build does. The first push creates the
+    # Built from src/Dockerfile (docker-compose.yml pulls this image; docker-compose.build.yml builds the
+    # same file from source), so the image contains ee/ under its own licence like that build does. The first push creates the
     # package as private: set it to public once under the org's Packages settings.
     # On a pull request the image is built for amd64 only and not pushed.
     runs-on: ubuntu-latest

@@ -1,0 +1,25 @@
+# Start without Ollama: the server uses fixture embeddings, so nothing is downloaded and no model runs.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.fixture.yml up
+#
+# To keep typing plain `docker compose up`, put this line in .env instead:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.fixture.yml
+#
+# Fixture embeddings are not semantic: the ranking of query results carries no meaning. This is for
+# trying the API and for tests, not for judging recall. Needs Compose 2.20 or later (`required: false`).
+# EMBEDDING_BASE_URL and EMBEDDING_MODEL stay set in docker-compose.yml; the fixture provider ignores them.
+#
+# The default `docker compose up` (docker-compose.yml alone) is unchanged and still starts Ollama.
+services:
+  # A profile that is never enabled keeps both services from starting.
+  ollama:
+    profiles: ["ollama"]
+  ollama-pull:
+    profiles: ["ollama"]
+  kg:
+    environment:
+      EMBEDDING_PROVIDER: fixture
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+        required: false
