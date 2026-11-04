@@ -98,6 +98,17 @@ describe('executeStdioToolCall', () => {
     expect(onExecute).not.toHaveBeenCalled();
   });
 
+  it('rejects an unknown parameter, names it and lists the valid ones, without calling execute', async () => {
+    const onExecute = vi.fn();
+    const deps = depsWith([fakeTool('kg_query', { onExecute })]);
+
+    const res = await executeStdioToolCall(deps, 'kg_query', { query: 'x' }, null);
+
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toMatch(/^Invalid params: Unrecognized key "query"; valid keys: text, /);
+    expect(onExecute).not.toHaveBeenCalled();
+  });
+
   it('treats missing arguments as an empty object', async () => {
     let seen: unknown;
     const deps = depsWith([fakeTool('kg_query', { onExecute: (p) => { seen = p; return { content: [{ type: 'text', text: '{}' }] }; } })]);

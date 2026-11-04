@@ -216,6 +216,31 @@ describe('OpenAPI routes: validation', () => {
     expect(calls).toEqual([]);
   });
 
+  it('rejects an unknown body key with 400, naming it and listing the valid keys', async () => {
+    const { app, calls } = makeApp();
+    const res = await send(app, { method: 'POST', path: '/query', body: { query: 'x' } });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body).toEqual({
+      error: { code: ErrorCode.VALIDATION, message: expect.stringMatching(/^Unrecognized key "query"; valid keys: text, type, /) },
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it.each([
+    ['/status', 'project'],
+    ['/session/info', undefined],
+  ])('rejects an unknown query-string key on GET %s with 400', async (path, validKey) => {
+    const { app, calls } = makeApp();
+    const res = await send(app, { method: 'GET', path, body: { foo: '1' } });
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error.code).toBe(ErrorCode.VALIDATION);
+    expect(error.message).toContain('Unrecognized key "foo"');
+    if (validKey) expect(error.message).toContain(`valid keys: ${validKey}`);
+    expect(calls).toEqual([]);
+  });
+
   it('returns 400 with the declared error body for a malformed JSON body', async () => {
     const { app, calls, logger } = makeApp();
     const res = await app.request('/api/v1/query', {

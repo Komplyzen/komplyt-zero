@@ -500,6 +500,41 @@ describe('MCP Protocol', () => {
       expect(body.error.code).toBe(-32602);
       expect(body.error.message).toContain('Invalid params');
     });
+
+    it('names an unknown parameter and lists the valid ones', async () => {
+      const strictTool: ToolHandler = {
+        ...mockTool,
+        inputSchema: z.strictObject({ text: z.string().optional(), limit: z.number().optional() }),
+      };
+      const strictRegistry = {
+        list: vi.fn(() => [strictTool]),
+        get: vi.fn((name: string) => (name === 'kg_query' ? strictTool : undefined)),
+      };
+      const app = new Hono();
+      app.route('/mcp', createMcpRoutes({
+        dbFactory: mockDbFactory,
+        embed: mockEmbed,
+        toolRegistry: strictRegistry,
+      }));
+
+      const res = await app.request('/mcp', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer valid-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'kg_query', arguments: { query: 'x' } },
+        }),
+      });
+
+      const body = await res.json();
+      expect(body.error.code).toBe(-32602);
+      expect(body.error.message).toBe('Invalid params: Unrecognized key "query"; valid keys: text, limit');
+    });
   });
 
   describe('Method not found', () => {

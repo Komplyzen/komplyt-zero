@@ -66,6 +66,10 @@ echo "$migrated" | grep -q "already applied" && ! echo "$migrated" | grep -q "ap
 dc up -d --no-deps --wait kg
 mcp kg_query '{"text":"survives a restart","project":"smoke"}' | grep -q "survives a restart" \
   || fail "node written before the restart is gone"
+# A misspelled parameter is rejected and named (it used to be dropped, and every node came back).
+rejected=$(mcp kg_query '{"query":"survives a restart","project":"smoke"}')
+{ grep -q -- '-32602' <<<"$rejected" && grep -q 'Unrecognized key \\"query\\"' <<<"$rejected"; } \
+  || fail "kg_query did not reject the unknown parameter query: $rejected"
 
 # A different KG_JWT_SECRET on the same volume must fail loudly with the hint, not silently; restoring
 # the original secret must recover.

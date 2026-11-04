@@ -443,7 +443,7 @@ const coercibleStringArray = z.union([
 // --- kg_node_create / kg_node_update ---
 // One tool per operation (OpenAI review rule L17: no action-dispatch tools).
 // Note: author and tenant are derived from JWT, not agent-settable
-export const nodeCreateParamsSchema = z.object({
+export const nodeCreateParamsSchema = z.strictObject({
   type: NodeType.describe('Kind of knowledge: observation, decision, argument, todo, problem, mitigation, workaround or approach'),
   content: z.string().min(1).refine(s => s.trim().length > 0, 'Content cannot be whitespace-only').describe('The knowledge to store, as plain text. Embedded for semantic search.'),
   status: Status.optional().describe('Initial status: open, resolved, blocked or done. Defaults to open for problem and todo, so they show up in kg_status.'),
@@ -454,7 +454,7 @@ export const nodeCreateParamsSchema = z.object({
 });
 export type NodeCreateParams = z.infer<typeof nodeCreateParamsSchema>;
 
-export const nodeUpdateParamsSchema = z.object({
+export const nodeUpdateParamsSchema = z.strictObject({
   id: z.string().min(1).describe('Node ID (e.g., "node:abc123")'),
   status: Status.optional().describe('New status: open, resolved, blocked or done'),
   content: z.string().optional().describe('Updated content. Regenerates embedding.'),
@@ -463,7 +463,7 @@ export const nodeUpdateParamsSchema = z.object({
 export type NodeUpdateParams = z.infer<typeof nodeUpdateParamsSchema>;
 
 // --- kg_query (from query.rs:85-104) ---
-export const queryParamsSchema = z.object({
+export const queryParamsSchema = z.strictObject({
   text: z.string().optional().describe('Semantic search query'),
   type: NodeType.optional().describe('Only nodes of this type'),
   status: Status.optional().describe('Only nodes with this status'),
@@ -484,7 +484,7 @@ export const queryParamsSchema = z.object({
 export type QueryParams = z.infer<typeof queryParamsSchema>;
 
 // --- kg_relate (from relate.rs:35-39) ---
-export const relateParamsSchema = z.object({
+export const relateParamsSchema = z.strictObject({
   from: z.string().describe('Source node ID (e.g., "node:abc123")'),
   to: z.string().describe('Target node ID'),
 });
@@ -492,27 +492,27 @@ export type RelateParams = z.infer<typeof relateParamsSchema>;
 
 // --- kg_session_start / kg_session_end / kg_session_info ---
 // One tool per operation (OpenAI review rule L17: no action-dispatch tools).
-export const sessionStartParamsSchema = z.object({
+export const sessionStartParamsSchema = z.strictObject({
   project: z.string().optional().describe('Project to scope the session to'),
   create_project: coercibleBool.default(false).describe('Create the project if it does not exist'),
   notes: z.string().optional().describe('Session notes'),
 });
 export type SessionStartParams = z.infer<typeof sessionStartParamsSchema>;
 
-export const sessionEndParamsSchema = z.object({});
+export const sessionEndParamsSchema = z.strictObject({});
 export type SessionEndParams = z.infer<typeof sessionEndParamsSchema>;
 
-export const sessionInfoParamsSchema = z.object({});
+export const sessionInfoParamsSchema = z.strictObject({});
 export type SessionInfoParams = z.infer<typeof sessionInfoParamsSchema>;
 
 // --- kg_status ---
-export const statusParamsSchema = z.object({
+export const statusParamsSchema = z.strictObject({
   project: z.string().optional().describe('Only count and list nodes in this project'),
 });
 export type StatusParams = z.infer<typeof statusParamsSchema>;
 
 // --- kg_meta_model (methodology extraction) ---
-export const metaModelParamsSchema = z.object({
+export const metaModelParamsSchema = z.strictObject({
   scope: MetaModelScope.describe('Scope: container, project, or person'),
   id: z.string().optional().describe('Identifier for scope. Project: name. Person: email. Container: omit for current, or explicit ID.'),
   lens: MetaModelLens.default('methodology').describe('Lens: methodology (default), resiliency, or process'),

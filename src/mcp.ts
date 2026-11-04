@@ -7,6 +7,7 @@ import { resolveActiveSession } from './tools/session-core.js';
 import { env } from './env.js';
 import { listToolEntries } from './tool-list.js';
 import { buildServerInfo } from './server-info.js';
+import { describeIssues } from './validation-message.js';
 import { childLogger } from './logger.js';
 
 const logger = childLogger('mcp');
@@ -183,8 +184,7 @@ export function createMcpRoutes(deps: {
 
     const parsed = tool.inputSchema.safeParse(params?.arguments ?? {});
     if (!parsed.success) {
-      const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-      return jsonRpcError(id, -32602, `Invalid params: ${issues}`);
+      return jsonRpcError(id, -32602, `Invalid params: ${describeIssues(parsed.error, tool.inputSchema)}`);
     }
 
     const db = await dbFactory.createScoped(claims, abortSignal);

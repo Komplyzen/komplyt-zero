@@ -10,6 +10,7 @@
  */
 
 import { requireScope, AuthError } from '../auth.js';
+import { describeIssues } from '../validation-message.js';
 import type {
   DbFactory,
   EmbeddingProvider,
@@ -52,11 +53,7 @@ export function rejectBeforeStartup(
   if (!tool) return errorResult(`Unknown tool: ${name}`, currentSession);
   const parsed = tool.inputSchema.safeParse(args ?? {});
   if (parsed.success) return null;
-  return errorResult(`Invalid params: ${issueSummary(parsed.error)}`, currentSession);
-}
-
-function issueSummary(error: { issues: Array<{ path: PropertyKey[]; message: string }> }): string {
-  return error.issues.map((i) => `${i.path.map(String).join('.')}: ${i.message}`).join('; ');
+  return errorResult(`Invalid params: ${describeIssues(parsed.error, tool.inputSchema)}`, currentSession);
 }
 
 export async function executeStdioToolCall(
@@ -81,7 +78,7 @@ export async function executeStdioToolCall(
 
   const parsed = tool.inputSchema.safeParse(args ?? {});
   if (!parsed.success) {
-    return errorResult(`Invalid params: ${issueSummary(parsed.error)}`, currentSession);
+    return errorResult(`Invalid params: ${describeIssues(parsed.error, tool.inputSchema)}`, currentSession);
   }
 
   const ctx: ToolContext = {
