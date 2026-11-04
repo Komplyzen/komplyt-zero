@@ -11,7 +11,6 @@ describe('parseListenAddr', () => {
     ['[::1]:8080', '::1', 8080],
     ['localhost', 'localhost', 3000],
     ['[::1]', '::1', 3000],
-    ['localhost:', 'localhost', 3000],
     [' 127.0.0.1:3000 ', '127.0.0.1', 3000],
   ])('%s -> host %s, port %i', (addr, host, port) => {
     expect(parseListenAddr(addr)).toEqual({ host, port });
@@ -23,6 +22,14 @@ describe('parseListenAddr', () => {
       expect(() => parseListenAddr(addr)).toThrow(/Invalid LISTEN_ADDR port: "/);
     },
   );
+
+  it.each(['localhost:', '[::1]:', ':'])('rejects an empty port after the colon in %s', (addr) => {
+    expect(() => parseListenAddr(addr)).toThrow(/expected a port after ":"/);
+  });
+
+  it('rejects an empty bracketed host (it would otherwise bind every interface)', () => {
+    expect(() => parseListenAddr('[]:3000')).toThrow(/empty host in brackets/);
+  });
 
   it('rejects IPv6 without brackets and tells the user to bracket it', () => {
     expect(() => parseListenAddr('::1:3000')).toThrow(/put IPv6 hosts in brackets, e\.g\. \[::1\]:3000/);

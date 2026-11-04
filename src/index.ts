@@ -239,14 +239,20 @@ process.on('SIGTERM', async () => {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info('SIGTERM received, starting graceful shutdown');
-  server?.stop();
-  await stopSessionPruner?.();
-  await gracefulShutdown();
-  logger.info('Graceful shutdown complete');
-  // Always exit once drained. Before the server exists, pending boot retry timers
-  // (embedding probe, publish) keep the process alive; after it, live handles
-  // (the Logtail worker, a WebSocket) hold it until the orchestrator's SIGKILL.
-  flushAndExit(0);
+  let exitCode = 0;
+  try {
+    server?.stop();
+    await stopSessionPruner?.();
+    await gracefulShutdown();
+    logger.info('Graceful shutdown complete');
+  } catch (err) {
+    // A drain that throws must still end the process, or it hangs until the orchestrator's SIGKILL.
+    logger.error({ err }, 'Graceful shutdown failed');
+    exitCode = 1;
+  }
+  // Always exit once drained. Before the server exists, pending boot retry timers (embedding probe,
+  // publish) keep the process alive; after it, other live handles (the Logtail worker, a WebSocket) can.
+  flushAndExit(exitCode);
 });
 
 // Routes mounted with real implementations.
@@ -293,17 +299,8 @@ app.get('/pool-metrics', (c) => {
 // Local mode serves an unauthenticated API: bind to loopback unless the operator says otherwise.
 const listenAddr =
   env.KG_AUTH_MODE === 'local' && !process.env.LISTEN_ADDR ? '127.0.0.1:3000' : env.LISTEN_ADDR;
-const parsedListen = (() => {
-  try {
-    return parseListenAddr(listenAddr);
-  } catch (err) {
-    logger.fatal({ err }, 'Invalid LISTEN_ADDR; refusing to start');
-    flushAndExit(1);
-    return undefined;
-  }
-})();
-// Park until the flush-then-exit fires; falling through would start serving on a bad address.
-const { host, port } = parsedListen ?? (await new Promise<never>(() => {}));
+// LISTEN_ADDR was validated with parseListenAddr when the env loaded, so this cannot throw.
+const { host, port } = parseListenAddr(listenAddr);
 if (env.KG_AUTH_MODE === 'local' && !isLoopbackBind(host)) {
   logger.warn(
     { addr: listenAddr },

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { ToolHandler } from './contracts.js';
+import { toolRegistry as realToolRegistry } from './tools/index.js';
 
 vi.mock('./env.js', () => ({
   env: {
@@ -534,6 +535,35 @@ describe('MCP Protocol', () => {
       const body = await res.json();
       expect(body.error.code).toBe(-32602);
       expect(body.error.message).toBe('Invalid params: Unrecognized key "query"; valid keys: text, limit');
+    });
+  });
+
+  describe('unknown parameters on the real tool schemas', () => {
+    it.each(realToolRegistry.list().map((t) => [t.name, t] as const))('%s rejects an unknown key over HTTP, naming it', async (name, tool) => {
+      const registry = {
+        list: vi.fn(() => [tool]),
+        get: vi.fn((n: string) => (n === name ? tool : undefined)),
+      };
+      const app = new Hono();
+      app.route('/mcp', createMcpRoutes({ dbFactory: mockDbFactory, embed: mockEmbed, toolRegistry: registry }));
+
+      const res = await app.request('/mcp', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name, arguments: { not_a_parameter: 1 } },
+        }),
+      });
+
+      const body = await res.json();
+      expect(body.error.code).toBe(-32602);
+      expect(body.error.message).toContain('Unrecognized key "not_a_parameter"');
+      // kg_session_end and kg_session_info take no parameters, so there is nothing to list.
+      const takesNoParams = name === 'kg_session_end' || name === 'kg_session_info';
+      expect(body.error.message.includes('; valid keys: ')).toBe(!takesNoParams);
     });
   });
 

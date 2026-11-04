@@ -5,6 +5,9 @@
 # To keep typing plain `docker compose up`, put this line in .env instead:
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.fixture.yml
 #
+# Use it on a fresh volume only: vectors from fixture and from Ollama are not comparable, so switching an
+# existing database needs `bun run bin/reembed.ts`, and containers of an earlier default start stay as orphans.
+#
 # Fixture embeddings are not semantic: the ranking of query results carries no meaning. This is for
 # trying the API and for tests, not for judging recall. Needs Compose 2.20 or later (`required: false`).
 # EMBEDDING_BASE_URL and EMBEDDING_MODEL stay set in docker-compose.yml; the fixture provider ignores them.

@@ -3,6 +3,7 @@
 # docker-compose.build.yml, fixture embeddings through docker-compose.fixture.yml, so no Ollama and no
 # model download), makes MCP calls, and asserts the container hardening holds.
 # Needs Docker with Compose 2.20 or later and jq. Cleans up after itself. Usage: scripts/compose-smoke.sh
+# (SMOKE_PUBLISHED=1 also starts the published image at the end: run it after a release, see CONTRIBUTING.md)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -27,7 +28,7 @@ fail() { echo "compose-smoke: $*" >&2; dc logs --tail 40 >&2 || true; exit 1; }
   || fail "hardcoded root credentials"
 
 # The overrides need Compose 2.20 (depends_on.required). Fail early with the reason, not mid-run.
-compose_version=$(docker compose version --short)
+compose_version=$(docker compose version --short) || fail "docker compose is not available"
 compose_version=${compose_version#v}
 compose_major=${compose_version%%.*}
 compose_rest=${compose_version#*.}
@@ -97,7 +98,9 @@ mcp kg_query '{"text":"survives a restart","project":"smoke"}' | grep -q "surviv
   || fail "node written before the restart is gone"
 # A misspelled parameter is rejected and named (it used to be dropped, and every node came back).
 rejected=$(mcp kg_query '{"query":"survives a restart","project":"smoke"}')
-{ grep -q -- '-32602' <<<"$rejected" && grep -q 'Unrecognized key \\"query\\"' <<<"$rejected"; } \
+# The server answers as an event stream ("data: {...}"); take the JSON out of it, or use the body as is.
+payload=$(sed -n 's/^data: //p' <<<"$rejected")
+jq -e '.error.code == -32602 and (.error.message | contains("\"query\""))' <<<"${payload:-$rejected}" >/dev/null \
   || fail "kg_query did not reject the unknown parameter query: $rejected"
 
 # A different KG_JWT_SECRET on the same volume must fail loudly with the hint, not silently; restoring
@@ -128,9 +131,13 @@ code=$(docker inspect -f '{{.State.ExitCode}}' "$cid")
 [ "$code" = 0 ] || fail "kg exited with $code after SIGTERM (137 means it had to be killed)"
 [ "$elapsed" -lt 8 ] || fail "kg took ${elapsed}s to stop"
 
-# The image users actually get: the default compose file's published tag, with the fixture override and
-# no source build. It is older than this branch's code, so only the compose wiring is checked (that the
-# current compose file still starts it and it answers), not behaviour added since its release.
-dcf -f docker-compose.yml -f docker-compose.fixture.yml up -d --wait
-mcp kg_status '{}' | grep -q total_nodes || fail "the published image did not answer kg_status"
+# Opt-in, not part of CI: it pulls the floating published tag, so a registry outage or a new release would
+# turn an unrelated change red. Run it after a release (SMOKE_PUBLISHED=1 scripts/compose-smoke.sh) to check
+# the image users actually get: the default compose file's tag, with the fixture override and no source
+# build. That image is older than this checkout, so only the compose wiring is checked (that the current
+# compose file still starts it and it answers), not behaviour added since its release.
+if [ "${SMOKE_PUBLISHED:-}" = 1 ]; then
+  dcf -f docker-compose.yml -f docker-compose.fixture.yml up -d --wait
+  mcp kg_status '{}' | grep -q total_nodes || fail "the published image did not answer kg_status"
+fi
 echo "compose-smoke: ok"

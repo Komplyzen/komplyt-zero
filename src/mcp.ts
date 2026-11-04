@@ -184,6 +184,9 @@ export function createMcpRoutes(deps: {
 
     const parsed = tool.inputSchema.safeParse(params?.arguments ?? {});
     if (!parsed.success) {
+      // Names only, never values: how often agents send parameters a tool does not have.
+      const unknownKeys = parsed.error.issues.flatMap((i) => (i.code === 'unrecognized_keys' ? i.keys : []));
+      if (unknownKeys.length > 0) logger.warn({ tool: name, unknownKeys }, 'Rejected unknown tool parameters');
       return jsonRpcError(id, -32602, `Invalid params: ${describeIssues(parsed.error, tool.inputSchema)}`);
     }
 

@@ -115,6 +115,8 @@ services:
     entrypoint: ["/bin/sh", "/migrate.sh"]
     restart: "no"
 
+  # docker-compose.fixture.yml takes ollama and ollama-pull out of the start: a new service that depends on
+  # them needs the same treatment there.
   ollama:
     <<: *hardened
     networks: [backend, egress]

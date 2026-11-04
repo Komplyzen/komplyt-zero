@@ -146,10 +146,21 @@ describe('kg_node_create default status', () => {
     expect(open_todos.map((n) => n.id)).toContain(created.id);
   });
 
-  it.each(['observation', 'decision', 'approach'])('a %s created without a status keeps none', async (type) => {
+  it.each(['observation', 'decision', 'argument', 'mitigation', 'workaround', 'approach'])('a %s created without a status keeps none', async (type) => {
     const created = await create(type, `A ${type} without status`);
     expect(created.status).toBeUndefined();
     expect(await storedStatus(created.id)).toBeFalsy();
+  });
+
+  it('an explicit status on a todo is stored unchanged: done and blocked todos are not listed as open', async () => {
+    const done = await create('todo', 'Cut release 1.0.3', 'done');
+    const blocked = await create('todo', 'Verify the permission gate on a PR', 'blocked');
+    expect(await storedStatus(done.id)).toBe('done');
+    expect(await storedStatus(blocked.id)).toBe('blocked');
+    const { open_todos } = await overview();
+    const ids = open_todos.map((n) => n.id);
+    expect(ids).not.toContain(done.id);
+    expect(ids).not.toContain(blocked.id);
   });
 
   it('an explicit status is stored unchanged: resolved is not listed, blocked still is', async () => {

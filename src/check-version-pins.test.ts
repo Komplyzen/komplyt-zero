@@ -74,6 +74,21 @@ describe('scripts/check-version-pins.sh', () => {
     expect(res.stderr).toContain("no 'surrealdb/surrealdb:v<version>' in docker-compose.yml");
   });
 
+  it.each([
+    ['a quoted Bun pin', '.github/workflows/ci.yml', '          bun-version: "1.4.3"\n  surrealdb/surrealdb:v3.2.4 start\n', 'bun-version: "1.4.3"'],
+    ['a Bun pin of latest', '.github/workflows/ci.yml', '          bun-version: latest\n  surrealdb/surrealdb:v3.2.4 start\n', 'bun-version: latest'],
+    ['a two-part SurrealDB tag', 'scripts/local-db.sh', 'SURREAL_IMAGE="${SURREAL_IMAGE:-surrealdb/surrealdb:v3.2}"\n', 'surrealdb/surrealdb:v3.2'],
+    ['an unpinned SurrealDB image', 'bench/lib.sh', 'SURREAL_IMAGE="${SURREAL_IMAGE:-surrealdb/surrealdb:latest}"\n', 'surrealdb/surrealdb:latest'],
+  ])('fails on %s instead of skipping it', (_name, path, content, shown) => {
+    put(path, content);
+    // Keep one valid pin per set so "found nothing" cannot be what fails.
+    if (path.endsWith('ci.yml') === false) put('.github/workflows/ci.yml', '          bun-version: 1.4.3\n  surrealdb/surrealdb:v3.2.4 start\n');
+    const res = check();
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('not a plain X.Y.Z pin');
+    expect(res.stderr).toContain(shown);
+  });
+
   it('fails when a file it should check has gone missing', () => {
     rmSync(join(repo, 'bench', 'lib.sh'));
     const res = check();
