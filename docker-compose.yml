@@ -34,7 +34,8 @@
 # still runs as root (upstream image); everything else is unprivileged, see docs/self-hosting.md.
 #
 # Data lives in the `surreal-data` volume (the migrations are applied once, then skipped).
-# The first start downloads the embedding model (bge-m3, roughly 1.2 GB) into `ollama-data`.
+# The first start downloads the embedding model (bge-m3, roughly 1.2 GB) into `ollama-data`, on top of
+# the large Ollama image: see the README for the sizes.
 # Switching the embedding model on an existing volume requires `bun run bin/reembed.ts`.
 
 name: kg-zero

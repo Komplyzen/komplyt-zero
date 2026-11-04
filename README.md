@@ -72,20 +72,24 @@ The graph, the decay and the spreading activation are all in this repository und
 
 In Claude Code, run `/mcp` afterwards to sign in. Data is stored in Frankfurt. Step-by-step instructions for each client are in [docs/connectors.md](docs/connectors.md).
 
-**Run it yourself, with Docker (quickstart).** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It is a quickstart for one person on one machine, **not production grade**: no authentication (local mode), a single unreplicated database, no backups, no TLS, and secrets passed as plain environment variables. For anything shared or long-lived, follow [docs/self-hosting.md](docs/self-hosting.md). It needs Docker with the Compose plugin: `docker compose version` should print a version. Debian's `docker.io` package lacks it, so install `docker-compose` (Ubuntu: `docker-compose-v2`) or Docker's own packages.
+**Run it yourself, with Docker (quickstart).** The compose file starts SurrealDB, Ollama embeddings and the server with one command. It is a quickstart for one person on one machine, **not production grade**: no authentication (local mode), a single unreplicated database, no backups, no TLS, and secrets passed as plain environment variables. For anything shared or long-lived, follow [docs/self-hosting.md](docs/self-hosting.md). It needs Docker with the Compose plugin: `docker compose version` should print a version. On Ubuntu, install `docker-compose-v2`. On Debian neither `docker.io` nor `docker-compose` (the old v1, which has no `docker compose` command) provides it: use Docker's own apt repository and install `docker-compose-plugin`. The overrides below need Compose 2.20 or later.
 
 ```bash
 git clone https://github.com/Komplyzen/komplyt-zero.git
 cd komplyt-zero
 [ -f .env ] || { umask 077; printf 'KG_JWT_SECRET=%s\nDB_ROOT_PASS=%s\n' "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env; }
-docker compose up --build
+docker compose up
 claude mcp add --transport http zero http://localhost:3000/mcp
 ```
 
-The first start downloads the embedding model (`bge-m3`, about 1.2 GB). The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't publish the port beyond localhost, or put a proxy in front of it, unless the proxy authenticates callers.
+The first start pulls the server image from `ghcr.io/komplyzen/komplyt-zero:1.0` (the latest 1.0.x release) and downloads the embedding model. One tester measured about 5.5 GB of downloads and 11 GB of disk on a 4 vCPU, 15 GB RAM host without a GPU (Compose 5.6, Docker 29): the Ollama image (0.40.4, 3.78 GB compressed) bundles GPU libraries even on a CPU-only host, and the `bge-m3` model adds about 1.2 GB. Plan on that much free disk. A minimum for the Ollama path has not been measured. Without Ollama the stack is small: with the published image and the fixture override below, a Mac with Docker Desktop measured 28 MiB of memory for the server, 216 MiB for an empty SurrealDB and about 450 MB of images. The server runs in **local auth mode** (`KG_AUTH_MODE=local`): no tokens, one fixed user in one fixed tenant, and a default container called "Company Knowledge" created on first use. That suits one person on one machine, so compose publishes the port on `127.0.0.1` only. Don't publish the port beyond localhost, or put a proxy in front of it, unless the proxy authenticates callers.
 Once it is up, `http://localhost:3000/docs` shows the server's documentation page and `http://localhost:3000/health` answers when it is ready.
 
 **Port 3000 already in use?** Then the `kg` container won't start ("address already in use"). Add `KG_PORT=3100` (any free port) to `.env`, run `docker compose up -d` again, and use `http://localhost:3100/mcp` and `http://localhost:3100/docs` instead.
+
+**Build from source.** `docker compose -f docker-compose.yml -f docker-compose.build.yml up --build` builds the image from `src/` instead of pulling it, tagged `kg-zero-kg:local`. The build needs far more memory and disk than running the image (it did not finish on a 6 GB VM) and fails behind a proxy that inspects TLS, so prefer the published image. If you cloned `main`, the compose file can be ahead of the released image: check out the release tag you want to run.
+
+**Without Ollama.** `docker compose -f docker-compose.yml -f docker-compose.fixture.yml up` starts the server with fixture embeddings: nothing is downloaded and no model runs, so it also works on a host that cannot reach the Ollama registry. Fixture embeddings are not semantic: the ranking of query results means nothing, so use this to try the API or in tests, not to judge recall. To keep typing `docker compose up`, put `COMPOSE_FILE=docker-compose.yml:docker-compose.fixture.yml` in `.env`.
 
 `KG_JWT_SECRET` and `DB_ROOT_PASS` are plain environment variables of the containers, so anyone with access to the Docker daemon can read them with `docker inspect`. SurrealDB reads its root password only from an argument or environment variable (no password file), so compose can't hide it. The command above writes both secrets to `.env` once (mode 600, git-ignored; the `[ -f .env ]` guard never overwrites it). Keep that file: the database keeps the first `DB_ROOT_PASS` and the first `KG_JWT_SECRET` hash, so a lost or regenerated value makes the next start fail (`kg` crash-loops, `migrate` gets a 401). Existing installs from before the hardening (root/root): put `DB_ROOT_PASS=root` and your original `KG_JWT_SECRET` in `.env`; tested, data and migrations carry over.
 
@@ -128,7 +132,7 @@ The server tells every client how to use it, but a few habits separate a graph t
 | `kg_relate` | Creates an edge between two nodes, or strengthens an existing one |
 | `kg_meta_model` | Reads the stored methodology, resiliency or process model of a container, project or person (read-only; computed ahead of time, see [docs/meta-model.md](docs/meta-model.md)) |
 
-Only `kg_node_update` changes what a node says. Querying, relating and starting sessions change usage scores, which shape future rankings. Pass `read_only: true` to `kg_query` when you are only looking, for example from a dashboard. The same operations are available over REST under `/api/v1`, described by `/api/v1/openapi.json`. Full parameter schemas are in `src/contracts.ts`. If you used the tools under their earlier names, see [docs/migration-tool-split.md](docs/migration-tool-split.md).
+Only `kg_node_update` changes what a node says. Querying, relating and starting sessions change usage scores, which shape future rankings. Pass `read_only: true` to `kg_query` when you are only looking, for example from a dashboard. The same operations are available over REST under `/api/v1`, described by `/api/v1/openapi.json`. Full parameter schemas are in `src/contracts.ts`. Unknown parameters are rejected with an error that names them and lists the valid ones. If you used the tools under their earlier names, see [docs/migration-tool-split.md](docs/migration-tool-split.md).
 
 ## Embeddings
 
