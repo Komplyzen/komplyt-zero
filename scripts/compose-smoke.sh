@@ -64,7 +64,7 @@ migrated=$(dc run --rm migrate 2>&1) || fail "second migrate failed: $migrated"
 echo "$migrated"
 echo "$migrated" | grep -q "already applied" && ! echo "$migrated" | grep -q "applying" || fail "second start re-applied migrations"
 dc up -d --no-deps --wait kg
-mcp kg_query '{"query":"survives a restart","project":"smoke"}' | grep -q "survives a restart" \
+mcp kg_query '{"text":"survives a restart","project":"smoke"}' | grep -q "survives a restart" \
   || fail "node written before the restart is gone"
 
 # A different KG_JWT_SECRET on the same volume must fail loudly with the hint, not silently; restoring
