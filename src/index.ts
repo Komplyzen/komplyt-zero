@@ -21,6 +21,7 @@ import { loadEnterpriseModules } from './ee-loader.js';
 import { logLocalModeWarning } from './auth-local.js';
 import { resolveCorsOrigin } from './cors-origin.js';
 import { checkLocalRequest, isLoopbackBind } from './local-guard.js';
+import { parseListenAddr } from './listen-addr.js';
 import { pooledDbFactory, gracefulShutdown, getPoolMetrics } from './pool.js';
 import { createProviderFromEnv } from './embed.js';
 import { toolRegistry } from './tools/index.js';
@@ -288,11 +289,6 @@ app.get('/pool-metrics', (c) => {
 });
 
 // Server startup
-function parseListenAddr(addr: string): { host: string; port: number } {
-  const [host, portStr] = addr.split(':');
-  return { host: host || '0.0.0.0', port: parseInt(portStr || '3000', 10) };
-}
-
 // Local mode serves an unauthenticated API: bind to loopback unless the operator says otherwise.
 const listenAddr =
   env.KG_AUTH_MODE === 'local' && !process.env.LISTEN_ADDR ? '127.0.0.1:3000' : env.LISTEN_ADDR;
