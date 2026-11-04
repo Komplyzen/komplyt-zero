@@ -243,9 +243,10 @@ process.on('SIGTERM', async () => {
   await stopSessionPruner?.();
   await gracefulShutdown();
   logger.info('Graceful shutdown complete');
-  // Still inside a boot retry window (embedding probe, publish): pending retry
-  // timers would keep the process alive.
-  if (!server) flushAndExit(0);
+  // Always exit once drained. Before the server exists, pending boot retry timers
+  // (embedding probe, publish) keep the process alive; after it, live handles
+  // (the Logtail worker, a WebSocket) hold it until the orchestrator's SIGKILL.
+  flushAndExit(0);
 });
 
 // Routes mounted with real implementations.
