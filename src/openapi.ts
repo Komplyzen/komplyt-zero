@@ -198,7 +198,12 @@ export interface RestRateLimit {
 const DEFAULT_RATE_LIMIT: RestRateLimit = { limit: 500, windowMs: 60_000 };
 
 /** Each route with the schema that validates its input, to name the valid keys on an unknown one. */
-const ROUTE_SCHEMAS: ReadonlyArray<{ route: { method: string; path: string }; schema: z.ZodType }> = [
+interface RouteSchema {
+  route: { method: string; path: string };
+  schema: z.ZodType;
+}
+
+const ROUTE_SCHEMAS: ReadonlyArray<RouteSchema> = [
   { route: nodeCreateRoute, schema: nodeCreateParamsSchema },
   { route: queryRoute, schema: queryParamsSchema },
   { route: nodeUpdateRoute, schema: nodeUpdateParamsSchema },

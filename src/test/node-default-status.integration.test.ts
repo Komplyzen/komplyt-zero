@@ -32,14 +32,14 @@ function createFixedEmbed(): EmbeddingProvider {
 }
 
 function createDbClient(db: Surreal): KgDbClient {
+  const query = async <T>(sql: string, vars?: Record<string, unknown>): Promise<T[]> => {
+    const results = await db.query<T[][]>(sql, vars);
+    return results.flat();
+  };
   return {
-    async query<T>(sql: string, vars?: Record<string, unknown>): Promise<T[]> {
-      const results = await db.query<T[][]>(sql, vars);
-      return results.flat();
-    },
+    query,
     async queryOne<T>(sql: string, vars?: Record<string, unknown>): Promise<T | null> {
-      const results = await this.query<T>(sql, vars);
-      return results[0] ?? null;
+      return (await query<T>(sql, vars))[0] ?? null;
     },
     async close(): Promise<void> {
       await db.close();

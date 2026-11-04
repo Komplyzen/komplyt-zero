@@ -30,7 +30,9 @@ function freePort(): Promise<number> {
   });
 }
 
-type Booted = ChildProcess & { output: string };
+interface Booted extends ChildProcess {
+  output: string;
+}
 
 function boot(port: number): Booted {
   const child: Booted = spawn('bun', ['index.ts'], {
