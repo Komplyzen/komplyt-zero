@@ -446,7 +446,7 @@ const coercibleStringArray = z.union([
 export const nodeCreateParamsSchema = z.object({
   type: NodeType.describe('Kind of knowledge: observation, decision, argument, todo, problem, mitigation, workaround or approach'),
   content: z.string().min(1).refine(s => s.trim().length > 0, 'Content cannot be whitespace-only').describe('The knowledge to store, as plain text. Embedded for semantic search.'),
-  status: Status.optional().describe('Initial status: open, resolved, blocked or done'),
+  status: Status.optional().describe('Initial status: open, resolved, blocked or done. Defaults to open for problem and todo, so they show up in kg_status.'),
   relates_to: coercibleStringArray.optional().describe('Node IDs to relate to (max 20)'),
   project: z.string().optional().describe('Project name to file the node under (defaults to the session project)'),
   container: z.string().optional().describe('Container ID. If omitted, uses tenant default container.'),
