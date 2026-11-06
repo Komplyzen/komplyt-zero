@@ -215,7 +215,20 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - name: Audit dependencies
-        run: bun audit
+        # KNOWN, ACCEPTED EXCEPTION (approved by David, 2026-11-06; added in PR #34). Every other advisory
+        # still fails this step.
+        #
+        # Ignored: GHSA-g3hv-75wg-m249 (minimatch, moderate: DoS via globparts amplification in
+        # patterns, affects >=7.0.0 <11.0.1).
+        # Why it cannot be fixed yet: the only remaining affected copy is minimatch 10.2.6, pulled in by
+        # eslint tooling (typescript-eslint > @typescript-eslint/typescript-estree, which declares
+        # minimatch ^10.2.2 even in its latest release). minimatch 11 is not allowed by that range, and
+        # `bun audit fix` cannot cross it.
+        # Why it is acceptable: dev tooling only. It is not in the shipped server or the published package,
+        # and nothing here passes untrusted glob patterns to minimatch. The runtime copy (via
+        # @logtail/node 0.5.8) was removed by updating to 0.5.13.
+        # REMOVE THIS IGNORE once typescript-estree accepts minimatch >=11.0.1: run `bun audit` without it.
+        run: bun audit --ignore GHSA-g3hv-75wg-m249
 
   # The open-source edition has no src/ee/ (source-available code): it must still typecheck, lint and pass its
   # tests without it.
