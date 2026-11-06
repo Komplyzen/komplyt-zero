@@ -20,11 +20,10 @@ import {
   META_MODEL_LICENSED_TIERS,
   META_MODEL_METHODOLOGY_TIERS,
 } from '../contracts.js';
-import { dbFactory } from '../db.js';
 import { metaModelTool } from '../tools/meta-model.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { connectTestDb, wipeData } from './connect.js';
+import { connectTestDb, createScopedCache, wipeData } from './connect.js';
 
 let rootDb: Surreal;
 
@@ -53,11 +52,14 @@ const ctxFor = (claims: KgTokenPayload): ToolContext => ({
   currentSession: null,
 });
 
+// One scoped connection per distinct claims set for the whole suite (see createScopedCache).
+const scoped = createScopedCache();
+
 async function ask(
   claims: KgTokenPayload,
   params: { scope: 'container' | 'project' | 'person'; id?: string; lens?: 'methodology' | 'resiliency' | 'process' }
 ) {
-  const db: KgDbClient = await dbFactory.createScoped(claims);
+  const db: KgDbClient = await scoped.get(claims);
   try {
     const result = await metaModelTool.execute(db, embed, ctxFor(claims), { lens: 'methodology', ...params });
     // A refusal (plan gate) is plain text; everything else is a JSON response.
@@ -133,7 +135,7 @@ describe('kg_meta_model reads the stored meta-model', { timeout: 30_000 }, () =>
 
   beforeEach(async () => {
     if (skipTests) return;
-    await wipeData(rootDb);
+    await wipeData(rootDb, { keepAuthSessions: true });
     await rootDb.query('DELETE meta_model');
     await rootDb.query(`
       CREATE tenant:acme SET name = 'Acme';
@@ -152,6 +154,7 @@ describe('kg_meta_model reads the stored meta-model', { timeout: 30_000 }, () =>
   });
 
   afterAll(async () => {
+    await scoped.closeAll();
     await rootDb?.close();
   });
 

@@ -9,7 +9,8 @@
  */
 
 import type { Surreal } from 'surrealdb';
-import { createRootConnection } from '../db.js';
+import { createRootConnection, dbFactory } from '../db.js';
+import type { KgDbClient, KgTokenPayload } from '../contracts.js';
 import { getEnv } from '../env.js';
 import { assertAllowlistTableDefined, sha256Hex } from '../signin-secret.js';
 
@@ -72,7 +73,12 @@ export async function connectTestDb(): Promise<Surreal | null> {
  * database and run sequentially — each suite starts from clean data.
  * Order respects references (edges before nodes, etc.); root bypasses RLS.
  */
-export async function wipeData(db: Surreal): Promise<void> {
+export async function wipeData(db: Surreal, opts: { keepAuthSessions?: boolean } = {}): Promise<void> {
+  // A scoped connection's $auth IS its kg_auth_session row (created at signin).
+  // Deleting it leaves the connection authenticated against a record that no
+  // longer exists, so every RLS check fails. Suites that reuse scoped
+  // connections across tests (see createScopedCache) must keep those rows.
+  const authSessions = opts.keepAuthSessions ? '' : ' DELETE kg_auth_session;';
   // On the shared remote CI database a wipe can collide with writes the previous
   // suite left in flight; SurrealDB reports that as a retryable transaction
   // conflict. Retry those, fail on anything else.
@@ -81,7 +87,7 @@ export async function wipeData(db: Surreal): Promise<void> {
       await db.query(
         `DELETE meta_model; DELETE tenant_tier; DELETE training_run; DELETE edge; DELETE decay_event; DELETE node; DELETE granted; DELETE container;
          DELETE session; DELETE principal; DELETE author; DELETE project; DELETE tenant;
-         DELETE audit_log; DELETE kg_auth_session;`
+         DELETE audit_log;${authSessions}`
       );
       return;
     } catch (err) {
@@ -89,4 +95,49 @@ export async function wipeData(db: Surreal): Promise<void> {
       await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
     }
   }
+}
+
+/**
+ * Scoped-connection cache for one suite. Opening a scoped connection costs a
+ * websocket handshake plus signin (~2.3s against the remote CI database), so
+ * suites that issue many calls with identical claims open one per distinct
+ * claims set instead of one per call. Pair with wipeData(db, { keepAuthSessions:
+ * true }) so the cached sessions' $auth rows survive between tests, and call
+ * closeAll() in afterAll. get() returns a client whose close() is a no-op:
+ * tests may keep their `finally { await db.close() }` shape.
+ */
+export function createScopedCache(): {
+  get(claims: KgTokenPayload): Promise<KgDbClient>;
+  closeAll(): Promise<void>;
+} {
+  const open = new Map<string, Promise<{ real: KgDbClient; shared: KgDbClient }>>();
+  return {
+    get(claims) {
+      const key = JSON.stringify(claims);
+      let entry = open.get(key);
+      if (!entry) {
+        entry = dbFactory.createScoped(claims).then((real) => ({
+          real,
+          shared: {
+            query: (sql, vars) => real.query(sql, vars),
+            queryOne: (sql, vars) => real.queryOne(sql, vars),
+            async close() {
+              // shared for the suite - closed by closeAll()
+            },
+          },
+        }));
+        // A failed open must not poison later calls with the same claims.
+        entry.catch(() => open.delete(key));
+        open.set(key, entry);
+      }
+      return entry.then((e) => e.shared);
+    },
+    async closeAll() {
+      const entries = [...open.values()];
+      open.clear();
+      for (const entry of entries) {
+        await (await entry).real.close();
+      }
+    },
+  };
 }
