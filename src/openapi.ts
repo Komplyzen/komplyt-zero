@@ -1,4 +1,5 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { describeFirstIssue } from './validation-message.js';
 import type { Context, TypedResponse } from 'hono';
 import { createAuthMiddleware, requireScope } from './auth.js';
 import {
@@ -196,12 +197,27 @@ export interface RestRateLimit {
 
 const DEFAULT_RATE_LIMIT: RestRateLimit = { limit: 500, windowMs: 60_000 };
 
-/** "path: message" of the first zod issue; zod messages describe the expected shape, not the input value. */
-function describeValidationError(error: z.ZodError): string {
-  const issue = error.issues[0];
-  if (!issue) return 'Invalid request';
-  const path = issue.path.map(String).join('.');
-  return path ? `${path}: ${issue.message}` : issue.message;
+/** Each route with the schema that validates its input, to name the valid keys on an unknown one. */
+interface RouteSchema {
+  route: { method: string; path: string };
+  schema: z.ZodType;
+}
+
+const ROUTE_SCHEMAS: ReadonlyArray<RouteSchema> = [
+  { route: nodeCreateRoute, schema: nodeCreateParamsSchema },
+  { route: queryRoute, schema: queryParamsSchema },
+  { route: nodeUpdateRoute, schema: nodeUpdateParamsSchema },
+  { route: relateRoute, schema: relateParamsSchema },
+  { route: sessionStartRoute, schema: sessionStartParamsSchema },
+  { route: sessionEndRoute, schema: sessionEndParamsSchema },
+  { route: sessionInfoRoute, schema: sessionInfoParamsSchema },
+  { route: statusRoute, schema: statusParamsSchema },
+];
+
+function schemaForRequest(method: string, path: string): z.ZodType | undefined {
+  return ROUTE_SCHEMAS.find(
+    ({ route }) => route.method.toUpperCase() === method.toUpperCase() && path.endsWith(route.path),
+  )?.schema;
 }
 
 export function createOpenApiRoutes(deps: {
@@ -216,10 +232,8 @@ export function createOpenApiRoutes(deps: {
   const app = new OpenAPIHono<RouteEnv>({
     defaultHook: (result, c) => {
       if (!result.success) {
-        return c.json(
-          { error: { code: ErrorCode.VALIDATION, message: describeValidationError(result.error) } },
-          400,
-        );
+        const message = describeFirstIssue(result.error, schemaForRequest(c.req.method, c.req.path));
+        return c.json({ error: { code: ErrorCode.VALIDATION, message } }, 400);
       }
     },
   });

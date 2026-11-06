@@ -143,6 +143,10 @@ async function createNode(
 
   const sessionId = extractRecordId(ctx.currentSession, 'session');
 
+  // kg_status lists only open (todo) and open or blocked (problem) nodes: one stored without a status
+  // would never be listed, so these two types start open unless the caller says otherwise.
+  const status = params.status ?? (params.type === 'problem' || params.type === 'todo' ? 'open' : undefined);
+
   const optionalSets: string[] = [];
   const queryParams: Record<string, unknown> = {
     type: params.type,
@@ -156,7 +160,7 @@ async function createNode(
     session_id: sessionId,
   };
 
-  if (params.status) { optionalSets.push('status = $status'); queryParams.status = params.status; }
+  if (status) { optionalSets.push('status = $status'); queryParams.status = status; }
   if (params.tags?.length) { optionalSets.push('tags = $tags'); queryParams.tags = params.tags; }
 
   const optionalClause = optionalSets.length ? optionalSets.join(', ') + ',' : '';
@@ -232,7 +236,7 @@ async function createNode(
     id: created.id,
     type: params.type,
     content: params.content,
-    status: params.status,
+    status,
     project: projectName,
     author: ctx.claims.sub,
     tenant: ctx.tenantId,

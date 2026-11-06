@@ -170,3 +170,24 @@ describe('session pruning switch', () => {
     expect(parse({ ...base, KG_SESSION_PRUNE: 'off' }).KG_SESSION_PRUNE).toBe(false);
   });
 });
+
+describe('LISTEN_ADDR env', () => {
+  // Fixture embeddings need no API key, so only LISTEN_ADDR can fail here.
+  const listen = (value?: string) =>
+    parse({ EMBEDDING_PROVIDER: 'fixture', ...(value === undefined ? {} : { LISTEN_ADDR: value }) });
+
+  it('defaults to 0.0.0.0:3000 and accepts host:port and bracketed IPv6', () => {
+    expect(listen().LISTEN_ADDR).toBe('0.0.0.0:3000');
+    expect(listen('127.0.0.1:3100').LISTEN_ADDR).toBe('127.0.0.1:3100');
+    expect(listen('[::]:3000').LISTEN_ADDR).toBe('[::]:3000');
+  });
+
+  it.each([
+    ['::1:3000', /put IPv6 hosts in brackets/],
+    ['host:0', /Invalid LISTEN_ADDR port: "0"/],
+    ['host:abc', /Invalid LISTEN_ADDR port: "abc"/],
+    ['[::1]:', /expected a port after ":"/],
+  ])('refuses %s with the reason, so boot stops before connecting', (value, reason) => {
+    expect(() => listen(value)).toThrow(reason);
+  });
+});

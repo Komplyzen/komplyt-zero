@@ -303,10 +303,13 @@ export async function gracefulShutdown(): Promise<void> {
 
   pool.stopAccepting();
 
+  let drainTimer: ReturnType<typeof setTimeout> | undefined;
   await Promise.race([
     pool.waitForAllReleased(),
-    new Promise<void>(resolve => setTimeout(resolve, DRAIN_TIMEOUT_MS)),
+    new Promise<void>(resolve => { drainTimer = setTimeout(resolve, DRAIN_TIMEOUT_MS); }),
   ]);
+  // A clean drain must not leave the cap timer pending: it would keep the process alive for its full length.
+  clearTimeout(drainTimer);
 
   await pool.closeAll();
   pool = null;

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { toolRegistry } from './tools/index.js';
 import { listToolEntries } from './tool-list.js';
 
-type JsonSchema = { type?: string; properties?: Record<string, { description?: string }> };
+type JsonSchema = { type?: string; additionalProperties?: boolean; properties?: Record<string, { description?: string }> };
 
 describe('listToolEntries', () => {
   const entries = listToolEntries(toolRegistry);
@@ -25,6 +25,10 @@ describe('listToolEntries', () => {
     const { properties = {} } = entry.inputSchema as JsonSchema;
     const undocumented = Object.entries(properties).filter(([, p]) => !p.description).map(([k]) => k);
     expect(undocumented).toEqual([]);
+  });
+
+  it.each(entries.map((e) => [e.name, e] as const))('%s: tells clients that unknown parameters are rejected', (_name, entry) => {
+    expect((entry.inputSchema as JsonSchema).additionalProperties).toBe(false);
   });
 
   it('survives a JSON round trip unchanged', () => {

@@ -216,6 +216,51 @@ describe('OpenAPI routes: validation', () => {
     expect(calls).toEqual([]);
   });
 
+  it.each(ROUTES)('$method $path rejects an unknown key (every route has its schema in the lookup)', async (route) => {
+    const { app, calls } = makeApp();
+    const res = await send(app, { ...route, body: { ...route.body, not_a_parameter: 1 } });
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error.message).toMatch(/^Unrecognized key "not_a_parameter"/);
+    // kg_session_end and kg_session_info take no parameters, so there is nothing to list.
+    const takesNoParams = route.path === '/session/end' || route.path === '/session/info';
+    expect(error.message.includes('; valid keys: ')).toBe(!takesNoParams);
+    expect(calls).toEqual([]);
+  });
+
+  it('no route path ends with another route path (the schema lookup matches by suffix)', () => {
+    for (const a of ROUTES) {
+      for (const b of ROUTES) {
+        if (a !== b) expect(b.path.endsWith(a.path), `${b.path} ends with ${a.path}`).toBe(false);
+      }
+    }
+  });
+
+  it('rejects an unknown body key with 400, naming it and listing the valid keys', async () => {
+    const { app, calls } = makeApp();
+    const res = await send(app, { method: 'POST', path: '/query', body: { query: 'x' } });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body).toEqual({
+      error: { code: ErrorCode.VALIDATION, message: expect.stringMatching(/^Unrecognized key "query"; valid keys: text, type, /) },
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it.each([
+    ['/status', 'project'],
+    ['/session/info', undefined],
+  ])('rejects an unknown query-string key on GET %s with 400', async (path, validKey) => {
+    const { app, calls } = makeApp();
+    const res = await send(app, { method: 'GET', path, body: { foo: '1' } });
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error.code).toBe(ErrorCode.VALIDATION);
+    expect(error.message).toContain('Unrecognized key "foo"');
+    if (validKey) expect(error.message).toContain(`valid keys: ${validKey}`);
+    expect(calls).toEqual([]);
+  });
+
   it('returns 400 with the declared error body for a malformed JSON body', async () => {
     const { app, calls, logger } = makeApp();
     const res = await app.request('/api/v1/query', {

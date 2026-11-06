@@ -1,0 +1,13 @@
+# Build the server image from source instead of pulling the published one:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up --build
+#
+# The build needs far more memory and disk than running the image (a 6 GB VM did not finish it) and
+# downloads dependencies, so it also fails behind a proxy that inspects TLS. The result is tagged
+# kg-zero-kg:local, not ghcr.io/komplyzen/komplyt-zero:1.0, so a source build never replaces or
+# shadows the image a later `docker compose pull` fetches.
+services:
+  kg:
+    build:
+      context: ./src
+    image: kg-zero-kg:local

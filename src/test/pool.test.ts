@@ -13,7 +13,7 @@ vi.mock('../env.js', () => ({
   }),
 }));
 
-import { PoolExhaustedError, CircuitBreakerOpenError, _resetPoolForTesting, getPoolMetrics } from '../pool.js';
+import { PoolExhaustedError, CircuitBreakerOpenError, _resetPoolForTesting, getPoolMetrics, gracefulShutdown } from '../pool.js';
 
 describe('ConnectionPool', () => {
   beforeEach(async () => {
@@ -32,6 +32,20 @@ describe('ConnectionPool', () => {
       expect(metrics.connected).toBe(false);
       expect(metrics.activeRequests).toBe(0);
       expect(metrics.circuitBreakerOpen).toBe(false);
+    });
+  });
+
+  describe('gracefulShutdown', () => {
+    it('leaves no timer pending after a clean drain (the drain cap must not keep the process alive)', async () => {
+      vi.useFakeTimers();
+      try {
+        getPoolMetrics(); // creates the pool; it opens no connection until used
+        const before = vi.getTimerCount();
+        await gracefulShutdown();
+        expect(vi.getTimerCount()).toBe(before);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
