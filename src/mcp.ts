@@ -4,7 +4,6 @@ import { AuthError, validateToken, requireScope, wwwAuthenticateHeader } from '.
 import { getLocalModeClaims } from './auth-local.js';
 import type { KgTokenPayload, KgDbClient, ToolContext, ToolRegistry, EmbeddingProvider, ToolName, DbFactory } from './contracts.js';
 import { resolveActiveSession } from './tools/session-core.js';
-import { getLegacyTool } from './tools/legacy.js';
 import { env } from './env.js';
 import { listToolEntries } from './tool-list.js';
 import { buildServerInfo } from './server-info.js';
@@ -172,8 +171,7 @@ export function createMcpRoutes(deps: {
     const name = params?.name;
     if (typeof name !== 'string') return jsonRpcError(id, -32602, 'Invalid params: name required');
 
-    // Old names stay callable (never listed) until LEGACY_TOOLS_UNTIL: see tools/legacy.ts
-    const tool = toolRegistry.get(name as ToolName) ?? getLegacyTool(name);
+    const tool = toolRegistry.get(name as ToolName);
     if (!tool) return toolFailure(id, `Unknown tool: ${name}`);
 
     try {

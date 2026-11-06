@@ -118,6 +118,69 @@ describe('Spread Fan-Out Bounding', () => {
     );
   }
 
+  // Statements per round trip. The CI target is a remote staging DB at
+  // ~100 ms/statement round-trip latency, so seeding hundreds of records one
+  // query at a time dominates runtime. One multi-statement query per chunk
+  // keeps the fixture to a handful of round trips; the chunk bound keeps a
+  // single request payload modest.
+  const SEED_CHUNK = 150;
+
+  let idCounter = 0;
+  function newNodeId(): string {
+    return `n${Date.now().toString(36)}${(idCounter++).toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  async function runChunked(statements: string[], vars: Record<string, unknown>): Promise<void> {
+    for (let i = 0; i < statements.length; i += SEED_CHUNK) {
+      const slice = statements.slice(i, i + SEED_CHUNK);
+      // Only the vars this chunk references are sent.
+      const chunkVars: Record<string, unknown> = {};
+      for (const key of Object.keys(vars)) {
+        if (slice.some(st => st.includes(`$${key}`))) chunkVars[key] = vars[key];
+      }
+      await rootDb.query(slice.join(';\n'), chunkVars);
+    }
+  }
+
+  /**
+   * Creates `contents.length` nodes in few round trips. Returns the ids in
+   * input order. Equivalent to calling makeNode once per entry.
+   */
+  async function makeNodesBatch(tenantId: string, sessionId: string, contents: string[], type = 'decision'): Promise<string[]> {
+    const ids = contents.map(() => newNodeId());
+    const vars: Record<string, unknown> = {
+      type,
+      tenant_id: tenantId.replace('tenant:', ''),
+      session_id: sessionId.replace('session:', ''),
+    };
+    const statements = ids.map((id, i) => {
+      vars[`id${i}`] = id;
+      vars[`c${i}`] = contents[i];
+      return `CREATE type::record('node', $id${i}) SET
+        content = $c${i},
+        type = $type,
+        source = 'test',
+        tenant = type::record('tenant', $tenant_id),
+        session_created = type::record('session', $session_id),
+        session_activated = type::record('session', $session_id)`;
+    });
+    await runChunked(statements, vars);
+    return ids.map(id => `node:${id}`);
+  }
+
+  /** Creates edges (from, to, weight) in few round trips. */
+  async function makeEdgesBatch(sessionId: string, edges: Array<{ from: string; to: string; weight: number }>): Promise<void> {
+    const vars: Record<string, unknown> = { session_id: sessionId.replace('session:', '') };
+    const statements = edges.map((e, i) => {
+      vars[`a${i}`] = e.from.replace('node:', '');
+      vars[`b${i}`] = e.to.replace('node:', '');
+      vars[`w${i}`] = e.weight;
+      return `RELATE (type::record('node', $a${i}))->edge->(type::record('node', $b${i}))
+        SET type = 'explicit', weight = $w${i}, session_reinforced = type::record('session', $session_id)`;
+    });
+    await runChunked(statements, vars);
+  }
+
   /**
    * Builds one seed with 65 hop-1 neighbors (fan-out 65 > the 50-node cap):
    * - 55 "keep" neighbors at weight 0.9 (rank ahead of the canary on score)
@@ -156,10 +219,12 @@ describe('Spread Fan-Out Bounding', () => {
 
     // 63 more "keep" neighbors (55 required to exceed the 50-cap alongside
     // champion/canary/seed, padded to 63 for a comfortably wide margin)
-    for (let i = 0; i < 63; i++) {
-      const filler = await makeNode(tenantId, sessionId, `filler neighbor ${i}`, 'decision');
-      await makeEdge(sessionId, seed, filler, 0.9);
-    }
+    const fillers = await makeNodesBatch(
+      tenantId,
+      sessionId,
+      Array.from({ length: 63 }, (_, i) => `filler neighbor ${i}`)
+    );
+    await makeEdgesBatch(sessionId, fillers.map(f => ({ from: seed, to: f, weight: 0.9 })));
 
     return { tenantId, sessionId, seed, champion, championChild, canary, canaryChild };
   }
@@ -183,7 +248,7 @@ describe('Spread Fan-Out Bounding', () => {
 
     expect(ids).toContain(championChild);
     expect(ids).not.toContain(canaryChild);
-  }, 180000); // WAN headroom: CI runs against the remote staging instance; the ~1200 sequential seed round-trips dominate, not the bounded query under test
+  }, 60000); // WAN headroom: CI runs against the remote staging instance; seeding is batched, so this is headroom, not the bounded query under test
 
   it('CAP-1: does not cap hop 0 - all 65 hop-1 neighbors (including the weak canary) are activated when spread_hops=1', async () => {
     const { tenantId, sessionId, canary } = await makeHighFanoutGraph();
@@ -206,16 +271,18 @@ describe('Spread Fan-Out Bounding', () => {
     // results (limit=100) - the canary must be among them since hop 0 is
     // never capped (only accumulated activation from hop 1 onward is).
     expect(ids).toContain(canary);
-  }, 180000); // WAN headroom: CI targets the remote staging instance; sequential seeding round-trips dominate, not the bounded query under test
+  }, 60000); // WAN headroom: CI targets the remote staging instance; seeding is batched, so this is headroom, not the bounded query under test
 
   it('CAP-2: a single hub node with 600+ edges does not blow up the batched neighbor query', async () => {
     const { tenantId, sessionId } = await makeTenantAndSession();
     const hub = await makeNode(tenantId, sessionId, 'hub', 'observation');
 
-    for (let i = 0; i < 600; i++) {
-      const leaf = await makeNode(tenantId, sessionId, `hub leaf ${i}`, 'decision');
-      await makeEdge(sessionId, hub, leaf, 0.5);
-    }
+    const leaves = await makeNodesBatch(
+      tenantId,
+      sessionId,
+      Array.from({ length: 600 }, (_, i) => `hub leaf ${i}`)
+    );
+    await makeEdgesBatch(sessionId, leaves.map(l => ({ from: hub, to: l, weight: 0.5 })));
 
     // The tool's own response `limit` maxes at 100 (below the 500-edge
     // bound), so the internal bound can't be observed through kg_query's
@@ -245,7 +312,7 @@ describe('Spread Fan-Out Bounding', () => {
     // 502-causing shape this spec exists to prevent.
     expect(result.nodes.length).toBeGreaterThan(0);
     expect(elapsed).toBeLessThan(15000);
-  }, 180000); // WAN headroom: CI targets the remote staging instance; sequential seeding round-trips dominate, not the bounded query under test
+  }, 60000); // WAN headroom: CI targets the remote staging instance; seeding is batched, so this is headroom, not the bounded query under test
 
   it('cumulative cost across a 3-hop spread over a wide graph stays bounded (SPEC CAP-1 cumulative requirement)', async () => {
     const { tenantId, sessionId } = await makeTenantAndSession();
@@ -263,11 +330,13 @@ describe('Spread Fan-Out Bounding', () => {
         // Fan out from a handful of parents per level (not every parent -
         // keeps fixture construction time reasonable while still producing
         // a candidate pool that would be unbounded without capping).
-        for (let i = 0; i < 60; i++) {
-          const child = await makeNode(tenantId, sessionId, `L${level} child ${i}`, 'decision');
-          await makeEdge(sessionId, parent, child, 0.9);
-          nextLevel.push(child);
-        }
+        const children = await makeNodesBatch(
+          tenantId,
+          sessionId,
+          Array.from({ length: 60 }, (_, i) => `L${level} child ${i}`)
+        );
+        await makeEdgesBatch(sessionId, children.map(c => ({ from: parent, to: c, weight: 0.9 })));
+        nextLevel.push(...children);
       }
       previousLevel = nextLevel;
     }
@@ -293,7 +362,7 @@ describe('Spread Fan-Out Bounding', () => {
     // (potentially thousands of candidate nodes by hop 3) would be the
     // exact shape that caused the original 502s.
     expect(elapsed).toBeLessThan(15000);
-  }, 180000); // WAN headroom: ~1080 sequential seed round-trips against the remote staging instance; the elapsed<15000 guard on the query itself stays strict
+  }, 60000); // WAN headroom: seeding is batched; the elapsed<15000 guard on the query itself stays strict
 
   it('zero-activation hop (no neighbor clears the threshold) does not error - existing empty-input early return is preserved', async () => {
     const { tenantId, sessionId } = await makeTenantAndSession();
@@ -318,5 +387,5 @@ describe('Spread Fan-Out Bounding', () => {
     const ids = result.nodes.map(n => n.id);
     expect(ids).toContain(seed);
     expect(ids).not.toContain(unreachable);
-  }, 180000); // WAN headroom: CI targets the remote staging instance; sequential seeding round-trips dominate, not the bounded query under test
+  }, 60000); // WAN headroom: CI targets the remote staging instance; seeding is batched, so this is headroom, not the bounded query under test
 });

@@ -59,8 +59,8 @@
   "dependencies": {
     "@hono/zod-openapi": "^1.5.1",
     "@hono/zod-validator": "^0.8.0",
-    "@logtail/node": "^0.5.8",
-    "@logtail/pino": "^0.5.8",
+    "@logtail/node": "^0.5.13",
+    "@logtail/pino": "^0.5.13",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "hono": "^4.13.5",
     "jose": "^6.2.4",
@@ -79,7 +79,10 @@
     "postcss": "^8.5.18",
     "js-yaml": "^4.3.2",
     "nanoid": "^3.3.18",
-    "qs": "^6.16.0"
+    "qs": "^6.16.0",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

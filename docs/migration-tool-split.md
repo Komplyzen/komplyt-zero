@@ -33,12 +33,12 @@ usage scores (`kg_query` only when `read_only` is not set).
 Callers outside this repo (agent skills, other repos' instructions, saved
 connector prompts) must be updated to the new names.
 
-## Temporary compatibility (MCP only)
+## Removed compatibility aliases (MCP only)
 
-ChatGPT keeps offering the old tool names from its last approved scan until
-OpenAI re-reviews the new ones, so for a limited time the MCP endpoint still
-accepts calls to `kg_session`, `kg_node`, `kg_record` and `kg_update` and routes
-them to the new tools (`src/tools/legacy.ts`). They are never listed, so the
-scan sees them as deleted. Each call logs `Deprecated tool name called`. The
-aliases switch themselves off on 2026-11-06 (`LEGACY_TOOLS_UNTIL`); delete
-`legacy.ts` and its references after that. REST routes have no such alias.
+For a transition period the MCP endpoint still accepted calls to the old names
+`kg_session`, `kg_node`, `kg_record` and `kg_update` and routed them to the new
+tools, because ChatGPT keeps offering tool names from its last approved scan
+until OpenAI re-reviews the new ones. The aliases switched themselves off on
+2026-11-06 and the code (`src/tools/legacy.ts`) has been deleted. A call to an old
+name now returns `Unknown tool`. OpenAI's rescan showed no errors before the
+removal. REST routes never had such an alias.

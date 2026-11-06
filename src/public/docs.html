@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Komplyt Zero - Knowledge Graph Documentation</title>
   <meta name="description" content="Persistent memory for AI agents. Connect Claude, ChatGPT, Cursor, and more to a shared knowledge graph.">
+  <link rel="canonical" href="https://kg.kompl.yt/docs">
+  <meta name="robots" content="index,follow">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"Komplyt Zero - Knowledge Graph Documentation","inLanguage":"en","url":"https://kg.kompl.yt/docs","about":"Komplyt MCP server"}
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -60,14 +65,38 @@
       Working memory that survives context compression. Record decisions, surface relevant history, let knowledge decay naturally.
     </p>
     <div class="mt-8 flex gap-4">
-      <a href="#install" class="px-5 py-2.5 bg-zero-accent hover:bg-zero-accentHover rounded-lg font-medium transition">Get Started</a>
+      <a href="#connect" class="px-5 py-2.5 bg-zero-accent hover:bg-zero-accentHover rounded-lg font-medium transition">Get Started</a>
       <a href="#tools" class="px-5 py-2.5 border border-zero-border hover:border-zero-muted rounded-lg font-medium transition">View Tools</a>
     </div>
+  </section>
+
+  <!-- Connect -->
+  <section id="connect" class="max-w-4xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6">Connect</h2>
+    <p class="text-zero-muted mb-4">Komplyt keeps what your AI knows as knowledge you own. It is an MCP server that works with Claude, ChatGPT, Cursor and any MCP client.</p>
+    <p class="text-sm font-semibold mb-2">MCP server URL</p>
+    <p class="bg-zero-surface border border-zero-border rounded-lg p-3 font-mono text-sm mb-6"><code class="text-zero-accent break-all select-all">https://kg.kompl.yt/mcp</code></p>
+    <ol class="list-decimal list-inside space-y-2 text-zero-muted mb-6">
+      <li>In Claude or ChatGPT, open the connector directory and add Komplyt. One click, no URL needed.</li>
+      <li>In any other MCP client, add the server URL shown above (examples below).</li>
+      <li>Sign in with your Komplyt account when prompted and approve access.</li>
+    </ol>
+    <h3 class="text-base font-semibold mb-2">Claude Code</h3>
+    <pre class="bg-zero-bg border border-zero-border rounded-lg p-4 overflow-x-auto text-sm"><code class="language-bash">claude mcp add --transport http komplyt https://kg.kompl.yt/mcp</code></pre>
+    <h3 class="text-base font-semibold mt-6 mb-2">Cursor and other clients with a JSON config</h3>
+    <pre class="bg-zero-bg border border-zero-border rounded-lg p-4 overflow-x-auto text-sm"><code class="language-json">{
+  "mcpServers": {
+    "komplyt": {
+      "url": "https://kg.kompl.yt/mcp"
+    }
+  }
+}</code></pre>
   </section>
 
   <!-- Quick Install -->
   <section id="install" class="max-w-4xl mx-auto px-6 py-12">
     <h2 class="text-2xl font-bold mb-6">Quick Install</h2>
+    <p class="text-zero-muted mb-4">Client-specific steps. The command and JSON config are in <a href="#connect" class="text-zero-accent hover:underline">Connect</a>.</p>
 
     <!-- Tabs -->
     <div class="flex gap-1 border-b border-zero-border mb-6">
@@ -86,7 +115,7 @@
           <li><span class="text-zero-text font-medium">2.</span> Enter URL: <code class="bg-zero-bg px-2 py-0.5 rounded text-zero-accent">https://kg.kompl.yt/mcp</code></li>
           <li><span class="text-zero-text font-medium">3.</span> Leave OAuth client ID/secret empty (auto-registered)</li>
           <li><span class="text-zero-text font-medium">4.</span> Click <strong class="text-zero-text">Add</strong>, then <strong class="text-zero-text">Connect</strong></li>
-          <li><span class="text-zero-text font-medium">5.</span> Enter your org, email, and API key on the authorize page</li>
+          <li><span class="text-zero-text font-medium">5.</span> Sign in with your Komplyt account and approve access</li>
           <li><span class="text-zero-text font-medium">6.</span> Enable the connector via the tools menu in chat</li>
         </ol>
       </div>
@@ -94,11 +123,7 @@
 
     <div class="tab-content" id="claude-code">
       <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
-        <p class="text-zero-muted mb-4">Add via CLI with your API key:</p>
-        <pre class="bg-zero-bg border border-zero-border rounded-lg p-4 overflow-x-auto text-sm"><code>claude mcp add --transport http kg https://kg.kompl.yt/mcp \
-  --header "Authorization: Bearer $KG_API_KEY" \
-  --header "X-KG-User: you@example.com" \
-  --header "X-KG-Org: your-org"</code></pre>
+        <p class="text-zero-muted">Run the <code class="bg-zero-bg px-2 py-0.5 rounded">claude mcp add</code> command from <a href="#connect" class="text-zero-accent hover:underline">Connect</a>, then run <code class="bg-zero-bg px-2 py-0.5 rounded">/mcp</code> in Claude Code to sign in with your Komplyt account and approve access.</p>
       </div>
     </div>
 
@@ -110,27 +135,14 @@
           <li><span class="text-zero-text font-medium">2.</span> Click <strong class="text-zero-text">Create</strong> or "Add custom connector"</li>
           <li><span class="text-zero-text font-medium">3.</span> URL: <code class="bg-zero-bg px-2 py-0.5 rounded text-zero-accent">https://kg.kompl.yt/mcp</code></li>
           <li><span class="text-zero-text font-medium">4.</span> Authentication: <strong class="text-zero-text">OAuth</strong> (auto-discovery)</li>
-          <li><span class="text-zero-text font-medium">5.</span> Complete authorization with your credentials</li>
+          <li><span class="text-zero-text font-medium">5.</span> Sign in with your Komplyt account and approve access</li>
         </ol>
       </div>
     </div>
 
     <div class="tab-content" id="cursor">
       <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
-        <p class="text-zero-muted mb-4">Add to <code class="bg-zero-bg px-2 py-0.5 rounded">.cursor/mcp.json</code>:</p>
-        <pre class="bg-zero-bg border border-zero-border rounded-lg p-4 overflow-x-auto text-sm"><code>{
-  "mcpServers": {
-    "kg": {
-      "transport": "http",
-      "url": "https://kg.kompl.yt/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY",
-        "X-KG-User": "you@example.com",
-        "X-KG-Org": "your-org"
-      }
-    }
-  }
-}</code></pre>
+        <p class="text-zero-muted">Add the JSON config from <a href="#connect" class="text-zero-accent hover:underline">Connect</a> to <code class="bg-zero-bg px-2 py-0.5 rounded">.cursor/mcp.json</code>, then sign in with your Komplyt account when Cursor prompts.</p>
       </div>
     </div>
 
@@ -144,8 +156,7 @@
           </div>
           <div>
             <p class="text-zero-text font-medium mb-2">Authentication</p>
-            <p class="text-zero-muted">OAuth 2.1 with PKCE (auto-discovery via <code class="bg-zero-bg px-1.5 py-0.5 rounded">/.well-known/oauth-authorization-server</code>)</p>
-            <p class="text-zero-muted mt-1">Or direct Bearer token with <code class="bg-zero-bg px-1.5 py-0.5 rounded">X-KG-User</code> and <code class="bg-zero-bg px-1.5 py-0.5 rounded">X-KG-Org</code> headers</p>
+            <p class="text-zero-muted">OAuth 2.1 with PKCE, discovered automatically. See <a href="#auth" class="text-zero-accent hover:underline">Authentication</a>.</p>
           </div>
           <div>
             <p class="text-zero-text font-medium mb-2">Protocol</p>
@@ -154,6 +165,16 @@
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- Authentication -->
+  <section id="auth" class="max-w-4xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6">Authentication</h2>
+    <p class="text-zero-muted mb-4">The server uses OAuth 2.1 with PKCE (S256) and dynamic client registration. MCP clients discover everything automatically. An unauthenticated request returns 401 with a <code class="bg-zero-surface px-1.5 py-0.5 rounded">WWW-Authenticate</code> header that points to the resource metadata. Scopes: <code class="bg-zero-surface px-1.5 py-0.5 rounded">kg:read</code>, <code class="bg-zero-surface px-1.5 py-0.5 rounded">kg:write</code>.</p>
+    <ul class="list-disc list-inside space-y-2 text-sm text-zero-muted">
+      <li>Authorization server metadata (RFC 8414): <a href="https://www.kompl.yt/.well-known/oauth-authorization-server" class="text-zero-accent hover:underline break-all">https://www.kompl.yt/.well-known/oauth-authorization-server</a></li>
+      <li>Protected resource metadata (RFC 9728): <a href="https://kg.kompl.yt/.well-known/oauth-protected-resource" class="text-zero-accent hover:underline break-all">https://kg.kompl.yt/.well-known/oauth-protected-resource</a></li>
+    </ul>
   </section>
 
   <!-- Tools Reference -->
@@ -384,7 +405,38 @@ to: string    // target node ID</code></pre>
 total_nodes: number
 open_todos: Node[]
 open_problems: Node[]
-recent_decisions: Node[]</code></pre>
+recent_decisions: Node[]
+recent_approaches: Node[]</code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- kg_meta_model -->
+      <details class="bg-zero-surface border border-zero-border rounded-lg group">
+        <summary class="px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <code class="text-zero-accent font-medium">kg_meta_model</code>
+            <span class="text-zero-muted">Read a stored meta-model</span>
+          </div>
+          <svg class="w-5 h-5 text-zero-muted group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </summary>
+        <div class="px-6 pb-4 border-t border-zero-border pt-4">
+          <p class="text-zero-muted mb-4">Read-only. Returns the stored meta-model of a container, project or person through a methodology, resiliency or process lens. Models are computed ahead of time (nightly on the hosted service), not on request. A scope with no stored model yet returns status "not_computed". On the hosted service the meta-model is part of the paid plans; the methodology lens is limited to the business plans.</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Parameters</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>scope: "container" | "project" | "person"
+id?: string  // required for project (name) and person (email)
+lens?: "methodology" | "resiliency" | "process"  // default: methodology</code></pre>
+            </div>
+            <div>
+              <p class="text-sm text-zero-muted mb-2">Example</p>
+              <pre class="bg-zero-bg border border-zero-border rounded p-3 text-sm"><code>kg_meta_model({
+  scope: "project",
+  id: "api-redesign",
+  lens: "process"
+})</code></pre>
             </div>
           </div>
         </div>
@@ -419,12 +471,41 @@ recent_decisions: Node[]</code></pre>
     </div>
   </section>
 
+  <!-- Troubleshooting -->
+  <section id="troubleshooting" class="max-w-4xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6">Troubleshooting</h2>
+    <dl class="space-y-4">
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <dt class="font-semibold mb-1">Opening the URL in a browser shows 405</dt>
+        <dd class="text-zero-muted text-sm">That is expected. The endpoint speaks MCP over POST. Add it in an MCP client instead.</dd>
+      </div>
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <dt class="font-semibold mb-1">The client reports 401</dt>
+        <dd class="text-zero-muted text-sm">Complete the sign-in. If it persists, remove the connector and add it again.</dd>
+      </div>
+      <div class="bg-zero-surface border border-zero-border rounded-lg p-6">
+        <dt class="font-semibold mb-1">Queries return nothing</dt>
+        <dd class="text-zero-muted text-sm">New accounts start empty. Results appear after your AI has captured something.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- More -->
+  <section id="more" class="max-w-4xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6">More</h2>
+    <ul class="list-disc list-inside space-y-2 text-sm">
+      <li><a href="https://www.kompl.yt/pricing" class="text-zero-accent hover:underline">Pricing</a></li>
+      <li><a href="https://www.kompl.yt/security" class="text-zero-accent hover:underline">Security</a></li>
+      <li><a href="https://www.kompl.yt/support" class="text-zero-accent hover:underline">Support</a></li>
+    </ul>
+  </section>
+
   <!-- Footer -->
   <footer class="border-t border-zero-border mt-12">
     <div class="max-w-4xl mx-auto px-6 py-8 flex items-center justify-between">
       <p class="text-zero-muted text-sm">Part of <a href="https://kompl.yt" class="text-zero-accent hover:underline">Komplyt</a></p>
       <div class="flex gap-6 text-sm">
-        <a href="https://kg.kompl.yt/.well-known/oauth-authorization-server" class="text-zero-muted hover:text-zero-text transition">OAuth Metadata</a>
+        <a href="https://www.kompl.yt/.well-known/oauth-authorization-server" class="text-zero-muted hover:text-zero-text transition">OAuth Metadata</a>
         <a href="https://kg.kompl.yt/health" class="text-zero-muted hover:text-zero-text transition">Status</a>
       </div>
     </div>

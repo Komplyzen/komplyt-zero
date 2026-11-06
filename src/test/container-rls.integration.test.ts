@@ -21,8 +21,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { Surreal } from 'surrealdb';
 import { KgDbClient } from '../contracts.js';
-import { dbFactory } from '../db.js';
-import { connectTestDb, wipeData } from './connect.js';
+import { connectTestDb, createScopedCache, wipeData } from './connect.js';
 
 let rootDb: Surreal;
 
@@ -88,14 +87,19 @@ describe('Container RLS Integration', () => {
     `);
   });
 
+  // One scoped connection per distinct claims set for the suite (this file
+  // wipes once, in beforeAll, so the sessions stay valid across tests).
+  const scoped = createScopedCache();
+
   afterAll(async () => {
+    await scoped.closeAll();
     await rootDb?.close();
   });
 
   // Tenant-scoped client via the standard factory — signs in against the real
   // `kg_server` access (migration 006) so RLS applies via $auth.
   async function createScopedClient(userId: string, tenantId: string, projects: string[] = []): Promise<KgDbClient> {
-    return dbFactory.createScoped({
+    return scoped.get({
       sub: userId,
       tenantId,
       scope: 'kg:read kg:write',
