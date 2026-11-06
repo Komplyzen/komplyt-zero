@@ -69,6 +69,32 @@ export async function connectTestDb(): Promise<Surreal | null> {
 }
 
 /**
+ * Invariant check for suites where APPLICATION code (not root seeds) wrote
+ * edges: no edge may join two different tenants, and none may touch a
+ * tenant-less or missing endpoint. Both queries run as root, read-only; they
+ * mirror the production checks run on 2026-11-04 (both returned 0, LYT-264).
+ *
+ * Do NOT call it in suites that create such edges on purpose (the
+ * edge-tenant-isolation suite seeds a cross-tenant edge as root), or after a
+ * test that deliberately leaves a dangling edge. Query 2 cannot tell a
+ * tenant-less node from a deleted endpoint.
+ */
+export async function assertNoCrossTenantEdges(db: Surreal): Promise<void> {
+  const [cross, missing] = await db.query<[{ count: number }[], { count: number }[]]>(
+    `SELECT count() AS count FROM edge WHERE in.tenant != NONE AND out.tenant != NONE AND in.tenant != out.tenant GROUP ALL;
+     SELECT count() AS count FROM edge WHERE in.tenant = NONE OR out.tenant = NONE GROUP ALL;`
+  );
+  // GROUP ALL returns no row at all when nothing matches.
+  const crossCount = cross?.[0]?.count ?? 0;
+  const missingCount = missing?.[0]?.count ?? 0;
+  if (crossCount !== 0 || missingCount !== 0) {
+    throw new Error(
+      `Edge invariant violated: ${crossCount} cross-tenant edge(s), ${missingCount} edge(s) with a tenant-less or missing endpoint`
+    );
+  }
+}
+
+/**
  * Delete all application data (not schema). Suites share one provisioned
  * database and run sequentially — each suite starts from clean data.
  * Order respects references (edges before nodes, etc.); root bypasses RLS.
