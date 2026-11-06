@@ -4,7 +4,6 @@ import { nodeCreateTool } from '../tools/node-create.js';
 import { nodeUpdateTool } from '../tools/node-update.js';
 import { sessionStartTool } from '../tools/session-start.js';
 import { statusTool } from '../tools/status.js';
-import { getLegacyTool } from '../tools/legacy.js';
 import {
   KgDbClient,
   ToolContext,
@@ -356,35 +355,4 @@ describe('Tool Consolidation Integration', () => {
     });
   });
 
-  describe('legacy tool names (temporary alias, real database)', () => {
-    const legacy = (name: string, ctx: ToolContext, params: Record<string, unknown>) =>
-      getLegacyTool(name)!.execute(client, embed, ctx, params);
-
-    it('old kg_session/kg_node/kg_record/kg_update calls still work end to end', async () => {
-      const started = await legacy('kg_session', createContext(null), {
-        action: 'start',
-        project: 'legacy-alias-test',
-        create_project: true,
-      });
-      expect(started.isError).toBeFalsy();
-      const sessionId = JSON.parse(started.content[0].text).session_id;
-      const ctx = createContext(sessionId);
-
-      const viaNode = await legacy('kg_node', ctx, { action: 'create', type: 'decision', content: 'old kg_node create' });
-      const viaRecord = await legacy('kg_record', ctx, { type: 'observation', content: 'old kg_record' });
-      expect(viaNode.isError).toBeFalsy();
-      expect(viaRecord.isError).toBeFalsy();
-      const nodeId = JSON.parse(viaRecord.content[0].text).id;
-
-      const updated = await legacy('kg_update', ctx, { id: nodeId, status: 'resolved' });
-      expect(updated.isError).toBeFalsy();
-      expect(JSON.parse(updated.content[0].text).node.status).toBe('resolved');
-
-      const info = await legacy('kg_session', ctx, { action: 'info' });
-      expect(JSON.parse(info.content[0].text).current_session.session_id).toBe(sessionId);
-
-      const ended = await legacy('kg_session', ctx, { action: 'end' });
-      expect(JSON.parse(ended.content[0].text).action).toBe('ended');
-    });
-  });
 });

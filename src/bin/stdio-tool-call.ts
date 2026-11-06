@@ -10,7 +10,6 @@
  */
 
 import { requireScope, AuthError } from '../auth.js';
-import { getLegacyTool } from '../tools/legacy.js';
 import type {
   DbFactory,
   EmbeddingProvider,
@@ -49,7 +48,7 @@ export function rejectBeforeStartup(
   args: unknown,
   currentSession: string | null
 ): StdioToolCallResult | null {
-  const tool = registry.get(name as ToolName) ?? getLegacyTool(name);
+  const tool = registry.get(name as ToolName);
   if (!tool) return errorResult(`Unknown tool: ${name}`, currentSession);
   const parsed = tool.inputSchema.safeParse(args ?? {});
   if (parsed.success) return null;
@@ -66,7 +65,7 @@ export async function executeStdioToolCall(
   args: unknown,
   currentSession: string | null
 ): Promise<StdioToolCallResult> {
-  const tool = deps.registry.get(name as ToolName) ?? getLegacyTool(name);
+  const tool = deps.registry.get(name as ToolName);
   if (!tool) {
     return errorResult(`Unknown tool: ${name}`, currentSession);
   }
