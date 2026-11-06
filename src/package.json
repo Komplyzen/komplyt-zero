@@ -59,8 +59,8 @@
   "dependencies": {
     "@hono/zod-openapi": "^1.5.1",
     "@hono/zod-validator": "^0.8.0",
-    "@logtail/node": "^0.5.8",
-    "@logtail/pino": "^0.5.8",
+    "@logtail/node": "^0.5.13",
+    "@logtail/pino": "^0.5.13",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "hono": "^4.13.5",
     "jose": "^6.2.4",
