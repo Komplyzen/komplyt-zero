@@ -101,7 +101,7 @@ The code in `src/ee/` is under the PolyForm Noncommercial License 1.0.0, or a co
 
 ## The compose quickstart
 
-`docker-compose.yml` is a quickstart for one person on one machine, not a production deployment: local auth mode (no tokens), one unreplicated SurrealDB, no backups, no TLS. For anything shared or long-lived use the steps above with your own SurrealDB, issuer and secrets management. Existing installs from before the hardening (root/root): put `DB_ROOT_PASS=root` and your original `KG_JWT_SECRET` in `.env`; tested, data and migrations carry over.
+`docker-compose.yml` is a quickstart for one person on one machine, not a production deployment: local auth mode (no tokens), one unreplicated SurrealDB, no backups, no TLS. For anything shared or long-lived use the steps above with your own SurrealDB, issuer and secrets management. Existing installs from before the hardening (root/root): put `DB_ROOT_PASS=root` and your original `KG_JWT_SECRET` in `.env`; tested, data and migrations carry over. It pulls the published server image; building from source and starting without Ollama are the override files `docker-compose.build.yml` and `docker-compose.fixture.yml`, described in the [README](../README.md).
 
 ### Secrets
 
@@ -113,7 +113,7 @@ The `kg` container runs as the unprivileged `bun` user and SurrealDB as its `non
 
 Services sit on an internal `backend` network with no route out. Only `kg` is also on a `frontend` network, which publishes `127.0.0.1:3000` and gives `kg` outbound access (for a hosted embedding provider); only Ollama has an `egress` network, for the model download. If something on your machine already uses port 3000, `kg` stays in "Created" with "address already in use": set `KG_PORT=3100` (any free port) in `.env` and run `docker compose up -d` again; the MCP endpoint is then `http://localhost:3100/mcp`.
 
-Compose images are pinned by tag and digest. `scripts/compose-smoke.sh` (the `container` job in CI) starts SurrealDB and `kg` with fixture embeddings, so no model download, and checks the non-root users, dropped capabilities, the internal network, one MCP call and a second start. Run it locally with Docker and the Compose plugin.
+Compose images are pinned by tag and digest, except the server image, which floats on the minor tag (`ghcr.io/komplyzen/komplyt-zero:1.0`). `scripts/compose-smoke.sh` (the `container` job in CI) builds the server from source through `docker-compose.build.yml` and starts the stack through the fixture override, so no model download, and checks the non-root users, dropped capabilities, the internal network, the file combinations, one MCP call, a second start, that an unknown parameter is rejected, a full start without any Ollama container and a stop that exits cleanly. Run it locally with Docker (Compose 2.20 or later) and `jq`.
 
 ## The stdio server
 

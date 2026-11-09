@@ -232,3 +232,44 @@ describe('Tool parameter schemas', () => {
     });
   });
 });
+
+describe('Tool parameter schemas reject unknown keys', () => {
+  // Minimal valid input per tool, so the only thing wrong in the second case is the extra key.
+  const cases = [
+    { name: 'kg_node_create', schema: nodeCreateParamsSchema, valid: { type: 'decision', content: 'x' } },
+    { name: 'kg_node_update', schema: nodeUpdateParamsSchema, valid: { id: 'node:abc' } },
+    { name: 'kg_query', schema: queryParamsSchema, valid: { text: 'x' } },
+    { name: 'kg_relate', schema: relateParamsSchema, valid: { from: 'node:a', to: 'node:b' } },
+    { name: 'kg_session_start', schema: sessionStartParamsSchema, valid: { project: 'p' } },
+    { name: 'kg_session_end', schema: sessionEndParamsSchema, valid: {} },
+    { name: 'kg_session_info', schema: sessionInfoParamsSchema, valid: {} },
+    { name: 'kg_status', schema: statusParamsSchema, valid: { project: 'p' } },
+    { name: 'kg_meta_model', schema: metaModelParamsSchema, valid: { scope: 'project', id: 'p' } },
+  ];
+
+  it.each(cases)('$name accepts valid input', ({ schema, valid }) => {
+    expect(schema.safeParse(valid).success).toBe(true);
+  });
+
+  it.each(cases)('$name rejects an unknown key and names it', ({ schema, valid }) => {
+    const result = schema.safeParse({ ...valid, not_a_parameter: 1 });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]).toMatchObject({ code: 'unrecognized_keys', keys: ['not_a_parameter'] });
+    }
+  });
+
+  it.each(cases)('$name publishes additionalProperties: false in its JSON Schema', ({ schema }) => {
+    expect(schema.toJSONSchema({ unrepresentable: 'any' })).toHaveProperty('additionalProperties', false);
+  });
+
+  it('still applies the kg_meta_model refine on a strict schema', () => {
+    expect(metaModelParamsSchema.safeParse({ scope: 'project' }).success).toBe(false);
+  });
+
+  it('still coerces string booleans and numbers on kg_query', () => {
+    const result = queryParamsSchema.safeParse({ text: 'x', read_only: 'true', limit: '5' });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toMatchObject({ read_only: true, limit: 5 });
+  });
+});

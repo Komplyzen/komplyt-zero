@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { blankToUndefined, envFlag, formatEnvIssues } from './env-helpers.js';
 import { embeddingEnvShape, checkEmbeddingEnv, resolveEmbeddingEnv } from './env-embedding.js';
 import { authEnvShape, checkAuthEnv } from './env-auth.js';
+import { parseListenAddr } from './listen-addr.js';
 
 const envSchema = z.object({
   // Database
@@ -36,7 +37,14 @@ const envSchema = z.object({
   // Server (required for HTTP server, optional for CLI)
   KG_PUBLIC_URL: z.string().url().optional(),
   CORS_ORIGINS: z.string().transform(s => s.split(',')).optional(),
-  LISTEN_ADDR: z.string().default('0.0.0.0:3000'),
+  // host:port or [ipv6]:port; a bad value stops boot here, before anything connects.
+  LISTEN_ADDR: z.string().default('0.0.0.0:3000').superRefine((value, ctx) => {
+    try {
+      parseListenAddr(value);
+    } catch (err) {
+      ctx.addIssue({ code: 'custom', message: err instanceof Error ? err.message : String(err) });
+    }
+  }),
   // Local auth mode only: extra Host header values to accept besides loopback (reverse proxy, LAN name).
   KG_LOCAL_ALLOWED_HOSTS: z.string().transform(s => s.split(',').map(h => h.trim().toLowerCase()).filter(Boolean)).optional(),
 
