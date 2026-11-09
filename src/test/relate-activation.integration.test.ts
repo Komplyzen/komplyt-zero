@@ -16,11 +16,11 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { Surreal } from 'surrealdb';
-import { ACTIVATION, EMBEDDING_DIMENSIONS, EmbeddingProvider, KgDbClient, ToolContext } from '../contracts.js';
+import { ACTIVATION, EMBEDDING_DIMENSIONS, EmbeddingProvider, KgDbClient, ToolContext, normalizeRecordId } from '../contracts.js';
 import { applyActivationBoost } from '../activation.js';
 import { relateTool } from '../tools/relate.js';
 import { queryTool } from '../tools/query.js';
-import { connectTestDb, wipeData } from './connect.js';
+import { assertNoCrossTenantEdges, connectTestDb, wipeData } from './connect.js';
 
 let rootDb: Surreal;
 let db: KgDbClient;
@@ -76,7 +76,13 @@ describe('Traversal Batching Regressions', () => {
     // ctx.tenantId must be the bare id (matches JWT claims.tenantId contract) -
     // relate.ts/query.ts pass it straight into type::record('tenant', $tenant_id)
     // without going through extractRecordId first.
-    return { tenantId: String(tenant.id).replace('tenant:', ''), sessionId: String(session.id) };
+    // SurrealDB returns generated ids that start with a digit escaped, as `tenant:⟨87a6…⟩`.
+    // Stripping only the table prefix would leave the brackets in the id, and the next
+    // type::record() would address a different (dangling) record: a ~1-in-3 flake per id.
+    return {
+      tenantId: normalizeRecordId(String(tenant.id)).replace('tenant:', ''),
+      sessionId: normalizeRecordId(String(session.id)),
+    };
   }
 
   async function makeNode(tenantId: string, sessionId: string, content: string, type = 'observation'): Promise<string> {
@@ -90,7 +96,7 @@ describe('Traversal Batching Regressions', () => {
         session_activated = type::record('session', $session_id)`,
       { content, type, tenant_id: tenantId.replace('tenant:', ''), session_id: sessionId.replace('session:', '') }
     );
-    return String(node.id);
+    return normalizeRecordId(String(node.id)); // see makeTenantAndSession: no ⟨⟩ escaping
   }
 
   function parseResult<T>(result: { content: Array<{ text: string }>; isError?: boolean }): T {
@@ -178,7 +184,7 @@ describe('Traversal Batching Regressions', () => {
     } as never);
 
     const output = parseResult<{ nodes: Array<{ id: string; activation_source: string }> }>(result);
-    const nodeMap = new Map(output.nodes.map(n => [n.id, n]));
+    const nodeMap = new Map(output.nodes.map(n => [normalizeRecordId(n.id), n]));
     expect(nodeMap.get(nodeA)?.activation_source).toBe('direct');
     expect(nodeMap.get(nodeB)?.activation_source).toBe('spread');
   });
@@ -212,7 +218,7 @@ describe('Traversal Batching Regressions', () => {
     } as never);
 
     const output = parseResult<{ nodes: Array<{ id: string; activation_path?: string[] }> }>(result);
-    const nodeMap = new Map(output.nodes.map(n => [n.id, n]));
+    const nodeMap = new Map(output.nodes.map(n => [normalizeRecordId(n.id), n]));
 
     // If the batched query mixed up which source each row belongs to, one of
     // these would be missing or would show the wrong seed in its path.
@@ -244,7 +250,7 @@ describe('Traversal Batching Regressions', () => {
         type: 'observation', spread: true, spread_hops: 1, limit: 10,
       } as never)
     );
-    const oneHopIds = oneHop.nodes.map(n => n.id);
+    const oneHopIds = oneHop.nodes.map(n => normalizeRecordId(n.id));
     expect(oneHopIds).toContain(nodeB);
     expect(oneHopIds).not.toContain(nodeC);
 
@@ -253,7 +259,7 @@ describe('Traversal Batching Regressions', () => {
         type: 'observation', spread: true, spread_hops: 2, limit: 10,
       } as never)
     );
-    const nodeMap = new Map(twoHop.nodes.map(n => [n.id, n]));
+    const nodeMap = new Map(twoHop.nodes.map(n => [normalizeRecordId(n.id), n]));
     expect(nodeMap.get(nodeC)?.activation_path).toEqual([nodeA, nodeB, nodeC]);
   });
 
@@ -280,6 +286,34 @@ describe('Traversal Batching Regressions', () => {
     expect(after?.decay_score).toBe(0.3);
   });
 
+  it('kg_relate rejects a node of another tenant with NOT_FOUND, and the edges the suite wrote span no tenants (LYT-264)', async () => {
+    // Guards the APPLICATION path: relate.ts looks both nodes up with an
+    // explicit tenant filter. It passes under any edge permission, so it is
+    // not evidence about the edge table's SELECT/CREATE rules.
+    const a = await makeTenantAndSession();
+    const b = await makeTenantAndSession();
+    const nodeA = await makeNode(a.tenantId, a.sessionId, 'tenant A node');
+    const nodeB = await makeNode(b.tenantId, b.sessionId, 'tenant B node');
+
+    const result = await relateTool.execute(db, noopEmbed, makeContext(a.tenantId, a.sessionId), {
+      from: nodeA,
+      to: nodeB,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.errorCode).toBe('NOT_FOUND');
+    const crossEdges = await db.query<{ id: string }>(
+      "SELECT id FROM edge WHERE in = type::record('node', $a) AND out = type::record('node', $b)",
+      { a: nodeA.replace('node:', ''), b: nodeB.replace('node:', '') }
+    );
+    expect(crossEdges).toHaveLength(0);
+
+    // Every edge the tests above created through kg_relate / activation.
+    // Must stay before the dangling-edge test below, which leaves a dangling
+    // edge on purpose.
+    await assertNoCrossTenantEdges(rootDb);
+  });
+
   it('a dangling edge (target node deleted) is excluded from results and does not crash spreading activation', async () => {
     const { tenantId, sessionId } = await makeTenantAndSession();
     const nodeA = await makeNode(tenantId, sessionId, 'node with dangling edge', 'observation');
@@ -304,7 +338,7 @@ describe('Traversal Batching Regressions', () => {
     } as never);
 
     const output = parseResult<{ nodes: Array<{ id: string }> }>(result);
-    const ids = output.nodes.map(n => n.id);
+    const ids = output.nodes.map(n => normalizeRecordId(n.id));
     expect(ids).toContain(nodeA);
     // nodeB no longer exists - fetchNodesByIds naturally excludes it, but the
     // call must not throw despite the edge still referencing a deleted node.

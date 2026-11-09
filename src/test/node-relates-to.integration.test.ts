@@ -10,9 +10,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { Surreal } from 'surrealdb';
 import { nodeCreateTool } from '../tools/node-create.js';
-import { KgDbClient, KgTokenPayload, ToolContext } from '../contracts.js';
+import { KgDbClient, KgTokenPayload, ToolContext, normalizeRecordId } from '../contracts.js';
 import { dbFactory } from '../db.js';
-import { connectTestDb, wipeData } from './connect.js';
+import { assertNoCrossTenantEdges, connectTestDb, wipeData } from './connect.js';
 
 let rootDb: Surreal;
 
@@ -135,7 +135,7 @@ describe('kg_node_create relates_to edge creation', () => {
       // traversal FROM it — invisible to the record-auth session.
       const edgeCheck = await rootDb.query<{ neighbors: { id: string }[] }[]>(
         `SELECT ->edge->node AS neighbors FROM type::record('node', $id)`,
-        { id: data.id.replace('node:', '') }
+        { id: normalizeRecordId(data.id).replace('node:', '') }
       );
 
       const neighbors = edgeCheck.flat()[0]?.neighbors ?? [];
@@ -186,7 +186,7 @@ describe('kg_node_create relates_to edge creation', () => {
       // Verify both edges via arrow traversal (as root — see first test)
       const edgeCheck = await rootDb.query<{ neighbors: { id: string }[] }[]>(
         `SELECT ->edge->node AS neighbors FROM type::record('node', $id)`,
-        { id: data.id.replace('node:', '') }
+        { id: normalizeRecordId(data.id).replace('node:', '') }
       );
 
       const neighbors = edgeCheck.flat()[0]?.neighbors ?? [];
@@ -223,7 +223,7 @@ describe('kg_node_create relates_to edge creation', () => {
       // root — see first test)
       const edgeCheck = await rootDb.query<{ neighbors: { id: string }[] }[]>(
         `SELECT ->edge->node AS neighbors FROM type::record('node', $id)`,
-        { id: data.id.replace('node:', '') }
+        { id: normalizeRecordId(data.id).replace('node:', '') }
       );
       const neighbors = edgeCheck.flat()[0]?.neighbors ?? [];
       expect(neighbors.length).toBe(1);
@@ -323,5 +323,50 @@ describe('kg_node_create relates_to edge creation', () => {
     } finally {
       await dbClient.close();
     }
+  });
+
+  it('skips a relates_to target that belongs to another tenant, and no cross-tenant edge exists (LYT-264)', async () => {
+    // Application-level guard: createNode looks the target up with an explicit
+    // tenant filter and skips it (edges_created 0; unlike kg_relate it does not
+    // return NOT_FOUND). It passes under any edge permission, so it is not
+    // evidence about the edge table's rules.
+    await rootDb.query(`
+      CREATE tenant:other_tenant SET name = 'Other Tenant';
+      CREATE session:other_session SET tenant = tenant:other_tenant;
+      CREATE node:other_tenant_node SET
+        content = 'Node of another tenant', tenant = tenant:other_tenant, type = 'observation',
+        source = 'test', container = NONE,
+        session_created = session:other_session, session_activated = session:other_session;
+    `);
+    const dbClient = await createTenantClient('test_tenant', 'test_user');
+    try {
+      const ctx: ToolContext = {
+        tenantId: 'test_tenant',
+        currentSession: 'session:test_session',
+        projects: [],
+        scope: 'kg:read kg:write',
+        claims: claimsFor('test_tenant', 'test_user'),
+      };
+
+      const result = await nodeCreateTool.execute(dbClient, mockEmbed, ctx, {
+        type: 'observation',
+        content: 'Test node pointing at another tenant',
+        relates_to: ['node:other_tenant_node'],
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(JSON.parse(result.content[0].text).edges_created).toBe(0);
+
+      const toForeign = await rootDb.query<{ id: string }[][]>(
+        `SELECT id FROM edge WHERE out = node:other_tenant_node OR in = node:other_tenant_node`
+      );
+      expect(toForeign.flat()).toHaveLength(0);
+    } finally {
+      await dbClient.close();
+    }
+  });
+
+  it('every edge the suite created through relates_to stays inside one tenant (LYT-264)', async () => {
+    await assertNoCrossTenantEdges(rootDb);
   });
 });

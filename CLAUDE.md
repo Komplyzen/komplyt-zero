@@ -111,6 +111,27 @@ later files. Prefer `DEFINE ... OVERWRITE` / `IF NOT EXISTS` and say
 in the header what happens to existing records. `scripts/schema-diff.sh` compares two
 databases' schemas (records and JWT keys ignored).
 
+**The `edge` table is readable across tenants (LYT-264, accepted risk):** `edge`
+has `FOR select FULL`; create/update check both endpoints' tenant, so a tenant
+session cannot create a cross-tenant edge. A tenant session that runs
+`SELECT * FROM edge` (or walks `[node:x]->edge` from an id it does not own) can
+read other tenants' edge rows (ids, weight, type, timestamps; never node
+content, node RLS still applies). Reaching that needs an application bug, since
+every edge query is fixed and parameterised. Since SurrealDB 3.1.0
+(GHSA-vjjx-rfw4-rmfc) traversal enforces the TARGET table's select permission,
+so node content stays protected; that is not the same as protecting edge rows.
+A scoped edge select (`in.tenant` / `out.tenant` = caller's tenant) was measured
+at roughly 1.5x to 5x the cost of `FULL` on the spread, activation and
+per-session count queries (`src/benchmarks/perf/edge-permission-cost.ts`,
+one-off, run by hand; one round on SurrealDB 3.2.4, the 3-round run was stopped
+because the first round already exceeded the +20% p50 budget by a wide margin),
+so it was not shipped. The `it.fails` tests in
+`edge-tenant-isolation.integration.test.ts` pin the current behaviour and turn
+red when the select is scoped: flip them to `it(` then. Revisit with a
+denormalised `tenant` field on `edge` (no node dereference in the predicate).
+`assertNoCrossTenantEdges(rootDb)` in `src/test/connect.ts` guards the write
+side in suites where application code creates edges.
+
 **Required test patterns:**
 - Connect via `connectTestDb()` from `src/test/connect.ts`, the standard
   `createRootConnection()` factory, env-driven (`KG_DB_URL`/`KG_DB_NS`/`KG_DB_NAME`).
@@ -123,6 +144,11 @@ databases' schemas (records and JWT keys ignored).
   the real `kg_server` access from the migrations — no test-local `DEFINE ACCESS`.
 - Create known state via actual tool execution (`relateTool.execute(...)`, `queryTool.execute(...)`), not direct DB writes that bypass the code under test
 - Verify results via queries
+- Generated record ids that start with a digit come back escaped (`node:⟨87a6…⟩`),
+  and tool output mixes both forms. Compare ids through `normalizeRecordId()`
+  and strip the table prefix from a normalised id; stripping only `node:` leaves
+  the brackets, which addresses a different (dangling) record and makes the test
+  flaky (about one in three generated ids).
 
 **CI:** the public `ci.yml` is secretless: typecheck, unit tests with fixture embeddings, an `integration` job
 (every suite against a throwaway SurrealDB container provisioned by

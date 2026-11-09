@@ -17,7 +17,7 @@ import type { Surreal } from 'surrealdb';
 import type { MiddlewareHandler } from 'hono';
 import { runPurge, purgeContainer } from '../purge.js';
 import { adminSoftDelete } from '../admin-delete.js';
-import { connectTestDb, wipeData } from '../../test/connect.js';
+import { assertNoCrossTenantEdges, connectTestDb, wipeData } from '../../test/connect.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -256,6 +256,10 @@ describe('Container Purge Integration', () => {
       expect(edges).toHaveLength(1);
       expect(edges[0].in).toBe('node:n_keep');
       expect(edges[0].out).toBe('node:n_free');
+
+      // The purge deletes edges together with their nodes, so a dangling or
+      // cross-tenant survivor here would be a purge bug (LYT-264).
+      await assertNoCrossTenantEdges(rootDb);
 
       const audits = await queryAll<{
         action: string;
