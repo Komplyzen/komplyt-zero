@@ -40,7 +40,7 @@ async execute(params: RelateParams): Promise<ToolResult> {
 
 ### Error Handling
 
-- Validate input at the boundary with Zod (`contracts.ts` schemas). Tools receive already-validated params and don't re-check shape.
+- Validate input at the boundary with Zod (`contracts.ts` schemas). Tools receive already-validated params and don't re-check shape. Tool param schemas are `z.strictObject`: an unknown key is rejected (`-32602`), so a new parameter must be added to the schema, never read off the raw args.
 - Tool-level failures return `toolError(code, message)`, not thrown exceptions. See `ERROR_HTTP_STATUS` in `contracts.ts` for the code → HTTP status mapping
 - Auth/transport-level failures use typed error classes (e.g. `AuthError` in `auth.ts`), caught once at the protocol boundary (`index.ts`, `bin/mcp.ts`)
 - Let unexpected errors propagate to that boundary rather than swallowing them per-call
@@ -224,6 +224,8 @@ src/
 ├── env-embedding.ts           # Embedding env fragment (usable without the full server env)
 ├── env-auth.ts                 # Auth-mode env fragment (KG_AUTH_MODE, KG_LOCAL_SUB, KG_LOCAL_TENANT)
 ├── env-helpers.ts             # Shared Zod env field helpers (blank = unset, on/off flags)
+├── listen-addr.ts              # parseListenAddr: host:port and [v6]:port; validated at env load, used by index.ts
+├── validation-message.ts       # describeIssues: Zod issues → one message (unknown key: valid keys listed); shared by HTTP, stdio and REST
 ├── metrics.ts                  # Request metrics
 ├── openapi.ts                   # REST API (/api/v1) routes + OpenAPI generation
 ├── rate-limit.ts                  # Rate limiting middleware
@@ -258,7 +260,8 @@ database/
 scripts/
 ├── local-db.sh       # Local SurrealDB container (empty: run apply-migrations.sh next)
 ├── migrate.sh        # Tracked migration runner (_migrations, one transaction per file, safe to re-run): the compose `migrate` service and self-hosters
-├── compose-smoke.sh  # Boots the compose stack (fixture embeddings), asserts hardening + a second start; the CI `container` job
+├── compose-smoke.sh  # Boots the compose stack (fixture embeddings), asserts hardening + a second start; the CI `container` job. SMOKE_PUBLISHED=1 also boots the published image (run after a release)
+├── check-version-pins.sh # Fails when a pinned Bun/SurrealDB version differs between the Dockerfile, workflows and scripts; the CI lint job
 ├── apply-migrations.sh # Apply database/migrations/*.surql to a fresh test database
 ├── schema-info.py    # A database's schema from INFO (no records, no JWT keys); --apply = runnable order
 └── schema-diff.sh    # Compare two databases' schemas
@@ -327,7 +330,7 @@ Batch related lookups into a single `db.query()` call (multiple statements, one 
 | `KOMPLYT_AUDIENCE` | `kg-server` | Comma-separated accepted audiences |
 | `KG_PUBLIC_URL` | unset | Public URL of the HTTP server (OAuth metadata) |
 | `CORS_ORIGINS` | unset | Comma-separated allowed origins |
-| `LISTEN_ADDR` | `0.0.0.0:3000` (`127.0.0.1:3000` in local auth mode when unset) | HTTP server bind address |
+| `LISTEN_ADDR` | `0.0.0.0:3000` (`127.0.0.1:3000` in local auth mode when unset) | HTTP server bind address: `host:port` or `[ipv6]:port`. Validated at boot (unbracketed IPv6, empty host or port, or a port outside 1-65535 refuses to start) |
 | `KG_LOCAL_ALLOWED_HOSTS` | unset | Local auth mode: extra accepted `Host` values besides loopback |
 | `MCP_SERVER_NAME` | `komplyt-zero` | MCP server identity string |
 | `TRUSTED_PROXY_CIDR` | unset | CIDR for trusted proxy (rate limiting) |
