@@ -56,7 +56,7 @@ networks:
 
 services:
   surrealdb:
-    image: surrealdb/surrealdb:v3.2.4@sha256:51baed8709f57f67dcf04b30e3177db846803fa9342dae2be58c6fa5f8d59843
+    image: surrealdb/surrealdb:v3.3.5@sha256:3db515b88e79737aa828c05fbf1515748004ba57495ff89a013851cc3f1ad4b9
     <<: *hardened
     command: start rocksdb:/data/kg.db
     networks: [backend]
